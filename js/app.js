@@ -176,8 +176,15 @@ function buildFieldGroup(field) {
   return wrapper;
 }
 
-// Kolom KIRI: tanggal, jadwal shift, nama petugas (sticky - diam saat di-scroll)
-// Kolom KANAN: semua field angka/jumlah (dari "Jumlah Resep Terlayani" dst)
+// Ambil nama grup dari label dengan menghapus angka urut di belakang
+// contoh: "Petugas Pagi 1" -> "Petugas Pagi", "Petugas 1" -> "Petugas"
+function groupLabel(label) {
+  return label.replace(/\s+\d+$/, '').trim();
+}
+
+// Kolom KIRI: tanggal, jadwal shift (langsung), lalu field petugas
+//   dikelompokkan jadi grid 2 kolom per sub-grup (mis. Pagi / Midel).
+// Kolom KANAN: semua field angka/jumlah, disusun grid otomatis.
 function renderForm(roomKey) {
   reportForm.innerHTML = '';
   const fields = ROOMS[roomKey].fields;
@@ -191,14 +198,41 @@ function renderForm(roomKey) {
   const rightCol = document.createElement('div');
   rightCol.className = 'form-col form-col-right';
 
-  fields.forEach(function (field) {
-    const group = buildFieldGroup(field);
-    if (field.type === 'number') {
-      rightCol.appendChild(group);
-    } else {
-      leftCol.appendChild(group);
-    }
-  });
+  const metaFields = fields.filter(function (f) { return f.type !== 'number' && f.type !== 'staff'; });
+  const staffFields = fields.filter(function (f) { return f.type === 'staff'; });
+  const numberFields = fields.filter(function (f) { return f.type === 'number'; });
+
+  metaFields.forEach(function (f) { leftCol.appendChild(buildFieldGroup(f)); });
+
+  if (staffFields.length) {
+    const groups = {};
+    const groupOrder = [];
+    staffFields.forEach(function (f) {
+      const g = groupLabel(f.label);
+      if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
+      groups[g].push(f);
+    });
+
+    const staffWrap = document.createElement('div');
+    staffWrap.className = 'staff-section';
+
+    groupOrder.forEach(function (g) {
+      if (groupOrder.length > 1) {
+        const heading = document.createElement('div');
+        heading.className = 'staff-group-title';
+        heading.textContent = g;
+        staffWrap.appendChild(heading);
+      }
+      const grid = document.createElement('div');
+      grid.className = 'staff-grid';
+      groups[g].forEach(function (f) { grid.appendChild(buildFieldGroup(f)); });
+      staffWrap.appendChild(grid);
+    });
+
+    leftCol.appendChild(staffWrap);
+  }
+
+  numberFields.forEach(function (f) { rightCol.appendChild(buildFieldGroup(f)); });
 
   columnsWrap.appendChild(leftCol);
   columnsWrap.appendChild(rightCol);
