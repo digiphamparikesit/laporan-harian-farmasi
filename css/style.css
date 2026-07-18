@@ -304,6 +304,26 @@ body {
   color: #C9E8D8;
 }
 
+/* ===== Rekap: panel ringkasan sticky, terpisah dari panel grafik ===== */
+.recap-summary-sticky {
+  position: sticky;
+  top: 84px; /* tinggi topbar (~52px) + jarak aman */
+  z-index: 40;
+  margin-bottom: 20px;
+  box-shadow: 0 6px 14px rgba(15, 110, 106, 0.10);
+}
+
+.recap-chart-card {
+  min-height: 240px;
+}
+
+@media (max-width: 700px) {
+  .recap-summary-sticky {
+    position: static;
+    box-shadow: none;
+  }
+}
+
 /* ===== Grafik Batang Mendatar ===== */
 .chart-wrap {
   margin-top: 8px;
