@@ -120,65 +120,89 @@ async function showFormScreen() {
 // =========================================================
 // RENDER FORM DINAMIS SESUAI KONFIGURASI RUANGAN
 // =========================================================
+function buildFieldGroup(field) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'form-group';
+
+  const label = document.createElement('label');
+  label.className = 'field-label';
+  label.textContent = field.label;
+  label.setAttribute('for', 'f_' + field.key);
+  wrapper.appendChild(label);
+
+  let inputEl;
+
+  if (field.type === 'date') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'date';
+  } else if (field.type === 'number') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'number';
+    inputEl.min = '0';
+    inputEl.inputMode = 'numeric';
+  } else if (field.type === 'select') {
+    inputEl = document.createElement('select');
+    const emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.textContent = '-- Pilih --';
+    inputEl.appendChild(emptyOpt);
+    (field.options || []).forEach(function (opt) {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt;
+      inputEl.appendChild(o);
+    });
+  } else if (field.type === 'staff') {
+    inputEl = document.createElement('select');
+    const emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.textContent = '-- Pilih Petugas --';
+    inputEl.appendChild(emptyOpt);
+    staffList.forEach(function (s) {
+      const o = document.createElement('option');
+      o.value = s.nama;
+      o.textContent = s.nama + (s.nip ? ' (' + s.nip + ')' : '');
+      inputEl.appendChild(o);
+    });
+  } else {
+    inputEl = document.createElement('input');
+    inputEl.type = 'text';
+  }
+
+  inputEl.className = 'input';
+  inputEl.id = 'f_' + field.key;
+  inputEl.dataset.key = field.key;
+  wrapper.appendChild(inputEl);
+  return wrapper;
+}
+
+// Kolom KIRI: tanggal, jadwal shift, nama petugas (sticky - diam saat di-scroll)
+// Kolom KANAN: semua field angka/jumlah (dari "Jumlah Resep Terlayani" dst)
 function renderForm(roomKey) {
   reportForm.innerHTML = '';
   const fields = ROOMS[roomKey].fields;
 
+  const columnsWrap = document.createElement('div');
+  columnsWrap.className = 'form-columns';
+
+  const leftCol = document.createElement('div');
+  leftCol.className = 'form-col form-col-left';
+
+  const rightCol = document.createElement('div');
+  rightCol.className = 'form-col form-col-right';
+
   fields.forEach(function (field) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'form-group';
-
-    const label = document.createElement('label');
-    label.className = 'field-label';
-    label.textContent = field.label;
-    label.setAttribute('for', 'f_' + field.key);
-    wrapper.appendChild(label);
-
-    let inputEl;
-
-    if (field.type === 'date') {
-      inputEl = document.createElement('input');
-      inputEl.type = 'date';
-    } else if (field.type === 'number') {
-      inputEl = document.createElement('input');
-      inputEl.type = 'number';
-      inputEl.min = '0';
-      inputEl.inputMode = 'numeric';
-    } else if (field.type === 'select') {
-      inputEl = document.createElement('select');
-      const emptyOpt = document.createElement('option');
-      emptyOpt.value = '';
-      emptyOpt.textContent = '-- Pilih --';
-      inputEl.appendChild(emptyOpt);
-      (field.options || []).forEach(function (opt) {
-        const o = document.createElement('option');
-        o.value = opt;
-        o.textContent = opt;
-        inputEl.appendChild(o);
-      });
-    } else if (field.type === 'staff') {
-      inputEl = document.createElement('select');
-      const emptyOpt = document.createElement('option');
-      emptyOpt.value = '';
-      emptyOpt.textContent = '-- Pilih Petugas --';
-      inputEl.appendChild(emptyOpt);
-      staffList.forEach(function (s) {
-        const o = document.createElement('option');
-        o.value = s.nama;
-        o.textContent = s.nama + (s.nip ? ' (' + s.nip + ')' : '');
-        inputEl.appendChild(o);
-      });
+    const group = buildFieldGroup(field);
+    if (field.type === 'number') {
+      rightCol.appendChild(group);
     } else {
-      inputEl = document.createElement('input');
-      inputEl.type = 'text';
+      leftCol.appendChild(group);
     }
-
-    inputEl.className = 'input';
-    inputEl.id = 'f_' + field.key;
-    inputEl.dataset.key = field.key;
-    wrapper.appendChild(inputEl);
-    reportForm.appendChild(wrapper);
   });
+
+  columnsWrap.appendChild(leftCol);
+  columnsWrap.appendChild(rightCol);
+  reportForm.appendChild(columnsWrap);
 }
 
 // =========================================================
