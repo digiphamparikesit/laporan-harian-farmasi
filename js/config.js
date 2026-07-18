@@ -7,17 +7,13 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-
 // Opsi jadwal shift. Sesuaikan dengan istilah yang dipakai di lapangan.
 const SHIFT_OPTIONS = ['Pagi', 'Middle', 'Sore', 'Malam'];
 
-// =============================================================
-// KONFIGURASI HALAMAN REKAP LAPORAN
-// Urutan array ini menentukan urutan tampil kartu & grafik.
-// "metric" harus sama persis dengan header kolom yang dijumlahkan.
-// =============================================================
-const RECAP_CONFIG = [
-  { room: 'IGD', label: 'IGD', metricLabel: 'Jumlah Resep Terlayani' },
-  { room: 'DEPO RAWAT INAP', label: 'Depo Rawat Inap', metricLabel: 'Jumlah Resep per-Shift' },
-  { room: 'IBS', label: 'IBS', metricLabel: 'Jumlah Operasi Elektif' },
-  { room: 'UPSS', label: 'UPSS', metricLabel: 'Jumlah Sediaan IV Admixture Sitostatika' }
-];
+// Nama login khusus admin (harus sama persis dengan yang ditambahkan
+// lewat fungsi addAdminAccount() di Code.gs)
+const ADMIN_ROOM = 'ADMIN';
+
+// Ruangan yang punya data untuk direkap (dipakai untuk dropdown pilihan
+// ruangan di layar Rekap Laporan saat login sebagai ADMIN)
+const RECAP_ROOM_LIST = ['IGD', 'IBS', 'DEPO RAWAT INAP', 'UPSS'];
 
 const MONTHS_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
