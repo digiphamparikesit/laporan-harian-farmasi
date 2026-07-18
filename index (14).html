@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Harian Farmasi</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="topbar-title">Laporan Harian Farmasi</span>
+      <span id="activeRoomBadge" class="room-badge hidden"></span>
+      <button id="logoutBtn" class="btn-ghost hidden">Keluar</button>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ===== LAYAR LOGIN ===== -->
+    <section id="loginScreen" class="card">
+      <h1 class="card-title">Masuk ke Ruangan</h1>
+      <p class="card-subtitle">Pilih ruangan dan masukkan password untuk mulai input laporan shift.</p>
+
+      <label class="field-label" for="roomSelect">Ruangan</label>
+      <select id="roomSelect" class="input"></select>
+
+      <label class="field-label" for="passwordInput">Password</label>
+      <input id="passwordInput" class="input" type="password" placeholder="Masukkan password ruangan">
+
+      <button id="loginBtn" class="btn-primary">Masuk</button>
+      <p id="loginError" class="error-text hidden"></p>
+    </section>
+
+    <!-- ===== LAYAR FORM ===== -->
+    <section id="formScreen" class="card hidden">
+      <h1 class="card-title" id="formTitle">Input Laporan</h1>
+      <p class="card-subtitle">Isi data pelayanan untuk shift ini, lalu simpan.</p>
+
+      <form id="reportForm"></form>
+
+      <button id="submitBtn" class="btn-primary">Simpan Laporan</button>
+      <p id="submitMessage" class="hidden"></p>
+    </section>
+
+  </main>
+
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <span>Memproses...</span>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
