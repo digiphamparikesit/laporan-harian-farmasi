@@ -133,6 +133,34 @@ body {
   align-content: start;
 }
 
+/* ===== Grup field petugas (mis. Petugas Pagi / Petugas Midel) ===== */
+.staff-section {
+  margin-top: 4px;
+}
+
+.staff-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+  margin: 18px 0 4px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.staff-group-title:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 8px;
+}
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
 @media (max-width: 760px) {
   .form-columns {
     flex-direction: column;
@@ -150,6 +178,9 @@ body {
   .form-col-right {
     grid-template-columns: 1fr;
     width: 100%;
+  }
+  .staff-grid {
+    grid-template-columns: 1fr;
   }
 }
 
