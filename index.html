@@ -18,6 +18,12 @@
 
   <main class="container">
 
+    <!-- ===== TAB NAVIGASI (muncul setelah login) ===== -->
+    <nav id="tabNav" class="tab-nav hidden">
+      <button id="tabInputBtn" class="tab-btn active">Input Laporan</button>
+      <button id="tabRecapBtn" class="tab-btn">Rekap Laporan</button>
+    </nav>
+
     <!-- ===== LAYAR LOGIN ===== -->
     <section id="loginScreen" class="card">
       <h1 class="card-title">Masuk ke Ruangan</h1>
@@ -42,6 +48,32 @@
 
       <button id="submitBtn" class="btn-primary">Simpan Laporan</button>
       <p id="submitMessage" class="hidden"></p>
+    </section>
+
+    <!-- ===== LAYAR REKAP LAPORAN ===== -->
+    <section id="recapScreen" class="card hidden">
+      <h1 class="card-title">Rekap Laporan</h1>
+      <p class="card-subtitle">Ringkasan jumlah pelayanan tiap ruangan berdasarkan filter tahun &amp; bulan.</p>
+
+      <div class="filter-row">
+        <div class="filter-item">
+          <label class="field-label" for="recapYear">Tahun</label>
+          <select id="recapYear" class="input"></select>
+        </div>
+        <div class="filter-item">
+          <label class="field-label" for="recapMonth">Bulan</label>
+          <select id="recapMonth" class="input">
+            <option value="">Semua Bulan</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="statCards" class="stat-cards"></div>
+
+      <div class="chart-wrap">
+        <h2 class="chart-title">Grafik Perbandingan Antar Ruangan</h2>
+        <div id="barChart" class="bar-chart"></div>
+      </div>
     </section>
 
   </main>
