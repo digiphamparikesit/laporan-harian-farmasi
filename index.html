@@ -52,36 +52,38 @@
 
     <!-- ===== LAYAR REKAP LAPORAN ===== -->
     <section id="recapScreen" class="hidden">
+      <div class="recap-columns">
 
-      <div class="card recap-summary-sticky">
-        <h1 class="card-title">Rekap Laporan</h1>
-        <p class="card-subtitle">Ringkasan jumlah pelayanan tiap ruangan berdasarkan filter tahun &amp; bulan.</p>
+        <div class="card recap-summary-sticky">
+          <h1 class="card-title">Rekap Laporan</h1>
+          <p class="card-subtitle">Ringkasan jumlah pelayanan tiap ruangan berdasarkan filter tahun &amp; bulan.</p>
 
-        <div class="filter-row">
-          <div id="adminRoomFilterWrap" class="filter-item hidden">
-            <label class="field-label" for="adminRoomSelect">Ruangan</label>
-            <select id="adminRoomSelect" class="input"></select>
+          <div class="filter-row">
+            <div id="adminRoomFilterWrap" class="filter-item hidden">
+              <label class="field-label" for="adminRoomSelect">Ruangan</label>
+              <select id="adminRoomSelect" class="input"></select>
+            </div>
+            <div class="filter-item">
+              <label class="field-label" for="recapYear">Tahun</label>
+              <select id="recapYear" class="input"></select>
+            </div>
+            <div class="filter-item">
+              <label class="field-label" for="recapMonth">Bulan</label>
+              <select id="recapMonth" class="input">
+                <option value="">Semua Bulan</option>
+              </select>
+            </div>
           </div>
-          <div class="filter-item">
-            <label class="field-label" for="recapYear">Tahun</label>
-            <select id="recapYear" class="input"></select>
-          </div>
-          <div class="filter-item">
-            <label class="field-label" for="recapMonth">Bulan</label>
-            <select id="recapMonth" class="input">
-              <option value="">Semua Bulan</option>
-            </select>
-          </div>
+
+          <div id="statCards" class="stat-cards"></div>
         </div>
 
-        <div id="statCards" class="stat-cards"></div>
-      </div>
+        <div class="card recap-chart-card">
+          <h2 class="chart-title" id="chartTitle">Grafik Nilai Pelayanan</h2>
+          <div id="barChart" class="bar-chart"></div>
+        </div>
 
-      <div class="card recap-chart-card">
-        <h2 class="chart-title" id="chartTitle">Grafik Nilai Pelayanan</h2>
-        <div id="barChart" class="bar-chart"></div>
       </div>
-
     </section>
 
   </main>
