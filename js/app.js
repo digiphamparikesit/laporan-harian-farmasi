@@ -22,9 +22,12 @@ const tabNav = document.getElementById('tabNav');
 const tabInputBtn = document.getElementById('tabInputBtn');
 const tabRecapBtn = document.getElementById('tabRecapBtn');
 const recapScreen = document.getElementById('recapScreen');
+const adminRoomFilterWrap = document.getElementById('adminRoomFilterWrap');
+const adminRoomSelect = document.getElementById('adminRoomSelect');
 const recapYear = document.getElementById('recapYear');
 const recapMonth = document.getElementById('recapMonth');
 const statCards = document.getElementById('statCards');
+const chartTitle = document.getElementById('chartTitle');
 const barChart = document.getElementById('barChart');
 
 // =========================================================
@@ -64,8 +67,13 @@ function init() {
     roomSelect.appendChild(opt);
   });
 
+  const adminOpt = document.createElement('option');
+  adminOpt.value = ADMIN_ROOM;
+  adminOpt.textContent = 'ADMIN (Lihat Semua Laporan)';
+  roomSelect.appendChild(adminOpt);
+
   const savedRoom = sessionStorage.getItem('activeRoom');
-  if (savedRoom && ROOMS[savedRoom]) {
+  if (savedRoom && (ROOMS[savedRoom] || savedRoom === ADMIN_ROOM)) {
     currentRoom = savedRoom;
     showFormScreen();
   }
@@ -104,6 +112,8 @@ logoutBtn.addEventListener('click', function () {
   formScreen.classList.add('hidden');
   recapScreen.classList.add('hidden');
   tabNav.classList.add('hidden');
+  tabInputBtn.classList.remove('hidden');
+  adminRoomFilterWrap.classList.add('hidden');
   logoutBtn.classList.add('hidden');
   activeRoomBadge.classList.add('hidden');
   loginScreen.classList.remove('hidden');
@@ -114,14 +124,39 @@ logoutBtn.addEventListener('click', function () {
 // =========================================================
 async function showFormScreen() {
   loginScreen.classList.add('hidden');
-  formScreen.classList.remove('hidden');
   recapScreen.classList.add('hidden');
   logoutBtn.classList.remove('hidden');
   activeRoomBadge.classList.remove('hidden');
+  tabNav.classList.remove('hidden');
+
+  if (currentRoom === ADMIN_ROOM) {
+    activeRoomBadge.textContent = 'ADMIN';
+    formScreen.classList.add('hidden');
+    tabInputBtn.classList.add('hidden');
+    adminRoomFilterWrap.classList.remove('hidden');
+
+    if (adminRoomSelect.options.length === 0) {
+      RECAP_ROOM_LIST.forEach(function (roomKey) {
+        const opt = document.createElement('option');
+        opt.value = roomKey;
+        opt.textContent = ROOMS[roomKey].label;
+        adminRoomSelect.appendChild(opt);
+      });
+      adminRoomSelect.addEventListener('change', loadRecap);
+    }
+
+    setActiveTab('recap');
+    if (recapYear.options.length === 0) initRecapFilters();
+    loadRecap();
+    return;
+  }
+
+  tabInputBtn.classList.remove('hidden');
+  adminRoomFilterWrap.classList.add('hidden');
+  formScreen.classList.remove('hidden');
   activeRoomBadge.textContent = ROOMS[currentRoom].label;
   formTitle.textContent = 'Input Laporan - ' + ROOMS[currentRoom].label;
 
-  tabNav.classList.remove('hidden');
   setActiveTab('input');
 
   if (staffList.length === 0) {
@@ -330,9 +365,9 @@ function initRecapFilters() {
     recapYear.appendChild(opt);
   }
 
-  MONTHS_ID.forEach(function (m) {
+  MONTHS_ID.forEach(function (m, idx) {
     const opt = document.createElement('option');
-    opt.value = m;
+    opt.value = idx + 1; // 1 = Januari ... 12 = Desember
     opt.textContent = m;
     recapMonth.appendChild(opt);
   });
@@ -343,10 +378,21 @@ recapMonth.addEventListener('change', loadRecap);
 
 // =========================================================
 // AMBIL DATA REKAP & RENDER KARTU + GRAFIK
+// (mengikuti ruangan yang login, atau ruangan yang dipilih ADMIN)
 // =========================================================
+function getTargetRoom() {
+  return currentRoom === ADMIN_ROOM ? adminRoomSelect.value : currentRoom;
+}
+
 async function loadRecap() {
+  const room = getTargetRoom();
+  if (!room) return;
+
+  chartTitle.textContent = 'Grafik Nilai Pelayanan - ' + ROOMS[room].label;
+
   const result = await callApi({
     action: 'getRecap',
+    room: room,
     tahun: recapYear.value,
     bulan: recapMonth.value
   });
@@ -357,41 +403,37 @@ async function loadRecap() {
     return;
   }
 
-  renderStatCards(result.data);
-  renderBarChart(result.data);
+  const numericFields = ROOMS[room].fields.filter(function (f) { return f.type === 'number'; });
+  renderStatCards(numericFields, result.data);
+  renderBarChart(numericFields, result.data);
 }
 
-function renderStatCards(data) {
+function renderStatCards(fields, data) {
   statCards.innerHTML = '';
-  RECAP_CONFIG.forEach(function (cfg) {
+  fields.forEach(function (f) {
     const card = document.createElement('div');
     card.className = 'stat-card';
 
     const value = document.createElement('div');
     value.className = 'stat-value';
-    value.textContent = (data[cfg.room] || 0).toLocaleString('id-ID');
+    value.textContent = (data[f.key] || 0).toLocaleString('id-ID');
 
     const label = document.createElement('div');
     label.className = 'stat-room';
-    label.textContent = cfg.label;
-
-    const metric = document.createElement('div');
-    metric.className = 'stat-metric';
-    metric.textContent = cfg.metricLabel;
+    label.textContent = f.label;
 
     card.appendChild(value);
     card.appendChild(label);
-    card.appendChild(metric);
     statCards.appendChild(card);
   });
 }
 
-function renderBarChart(data) {
+function renderBarChart(fields, data) {
   barChart.innerHTML = '';
-  const maxValue = Math.max(1, ...RECAP_CONFIG.map(function (cfg) { return data[cfg.room] || 0; }));
+  const maxValue = Math.max(1, ...fields.map(function (f) { return data[f.key] || 0; }));
 
-  RECAP_CONFIG.forEach(function (cfg) {
-    const value = data[cfg.room] || 0;
+  fields.forEach(function (f) {
+    const value = data[f.key] || 0;
     const pct = Math.round((value / maxValue) * 100);
 
     const row = document.createElement('div');
@@ -399,7 +441,7 @@ function renderBarChart(data) {
 
     const label = document.createElement('div');
     label.className = 'bar-label';
-    label.textContent = cfg.label;
+    label.textContent = f.label;
 
     const track = document.createElement('div');
     track.className = 'bar-track';
