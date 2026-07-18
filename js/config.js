@@ -2,7 +2,7 @@
 // GANTI dengan URL Web App hasil deploy Apps Script kamu
 // (Deploy > New deployment > Web app > copy "Web app URL")
 // =============================================================
-const API_URL = 'GANTI_DENGAN_URL_WEB_APP_APPS_SCRIPT';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-0eGUbABi8IhtkN2FTBqxEH8S9Pw0y6U2u9LK9DyTjMD0/exec';
 
 // Opsi jadwal shift. Sesuaikan dengan istilah yang dipakai di lapangan.
 const SHIFT_OPTIONS = ['Pagi', 'Middle', 'Sore', 'Malam'];
