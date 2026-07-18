@@ -56,6 +56,10 @@
       <p class="card-subtitle">Ringkasan jumlah pelayanan tiap ruangan berdasarkan filter tahun &amp; bulan.</p>
 
       <div class="filter-row">
+        <div id="adminRoomFilterWrap" class="filter-item hidden">
+          <label class="field-label" for="adminRoomSelect">Ruangan</label>
+          <select id="adminRoomSelect" class="input"></select>
+        </div>
         <div class="filter-item">
           <label class="field-label" for="recapYear">Tahun</label>
           <select id="recapYear" class="input"></select>
@@ -71,7 +75,7 @@
       <div id="statCards" class="stat-cards"></div>
 
       <div class="chart-wrap">
-        <h2 class="chart-title">Grafik Perbandingan Antar Ruangan</h2>
+        <h2 class="chart-title" id="chartTitle">Grafik Nilai Pelayanan</h2>
         <div id="barChart" class="bar-chart"></div>
       </div>
     </section>
