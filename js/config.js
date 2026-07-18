@@ -2,10 +2,27 @@
 // GANTI dengan URL Web App hasil deploy Apps Script kamu
 // (Deploy > New deployment > Web app > copy "Web app URL")
 // =============================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-0eGUbABi8IhtkN2FTBqxEH8S9Pw0y6U2u9LK9DyTjMD0/exec';
+const API_URL = 'GANTI_DENGAN_URL_WEB_APP_APPS_SCRIPT';
 
 // Opsi jadwal shift. Sesuaikan dengan istilah yang dipakai di lapangan.
 const SHIFT_OPTIONS = ['Pagi', 'Middle', 'Sore', 'Malam'];
+
+// =============================================================
+// KONFIGURASI HALAMAN REKAP LAPORAN
+// Urutan array ini menentukan urutan tampil kartu & grafik.
+// "metric" harus sama persis dengan header kolom yang dijumlahkan.
+// =============================================================
+const RECAP_CONFIG = [
+  { room: 'IGD', label: 'IGD', metricLabel: 'Jumlah Resep Terlayani' },
+  { room: 'DEPO RAWAT INAP', label: 'Depo Rawat Inap', metricLabel: 'Jumlah Resep per-Shift' },
+  { room: 'IBS', label: 'IBS', metricLabel: 'Jumlah Operasi Elektif' },
+  { room: 'UPSS', label: 'UPSS', metricLabel: 'Jumlah Sediaan IV Admixture Sitostatika' }
+];
+
+const MONTHS_ID = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
 
 // Tipe field yang didukung: 'date', 'text', 'number', 'select', 'staff'
 // 'staff'  -> dropdown otomatis diisi dari sheet DATA STAFF
