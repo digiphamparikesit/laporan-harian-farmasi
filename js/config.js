@@ -95,6 +95,7 @@ const ROOMS = {
       { key: 'JADWAL SHIFT', label: 'Jadwal Shift', type: 'select', options: SHIFT_OPTIONS },
       { key: 'PETUGAS 1', label: 'Petugas 1', type: 'staff' },
       { key: 'PETUGAS 2', label: 'Petugas 2', type: 'staff' },
+      { key: 'PETUGAS 3', label: 'Petugas 3', type: 'staff' },
       { key: 'JUMLAH PASIEN KEMOTERAPI', label: 'Jumlah Pasien Kemoterapi', type: 'number' },
       { key: 'JUMLAH SEDIAAN IV ADMIXTURE SITOSTATIKA', label: 'Jumlah Sediaan IV Admixture Sitostatika', type: 'number' },
       { key: 'JUMLAH SEDIAAN IV ADMIXTURE TPN', label: 'Jumlah Sediaan IV Admixture TPN', type: 'number' },
