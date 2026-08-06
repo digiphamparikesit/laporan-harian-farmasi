@@ -15,6 +15,27 @@ const ADMIN_ROOM = 'ADMIN';
 // ruangan di layar Rekap Laporan saat login sebagai ADMIN)
 const RECAP_ROOM_LIST = ['IGD', 'IBS', 'DEPO RAWAT INAP', 'UPSS'];
 
+// Warna khas tiap ruangan untuk grafik garis tren (khusus ADMIN)
+const ROOM_COLORS = {
+  'IGD': '#0F6E6A',
+  'DEPO RAWAT INAP': '#B75B12',
+  'IBS': '#7A3E9D',
+  'UPSS': '#1D4E89'
+};
+
+const MONTHS_ID_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+
+// Konfigurasi grafik garis tren bulanan semua unit (panel khusus ADMIN).
+// Warna dibedakan tiap unit supaya mudah dibaca di legenda.
+const TREND_CONFIG = [
+  { room: 'IGD', label: 'IGD', color: '#0F6E6A' },
+  { room: 'DEPO RAWAT INAP', label: 'Depo Rawat Inap', color: '#B3541E' },
+  { room: 'IBS', label: 'IBS', color: '#375A7F' },
+  { room: 'UPSS', label: 'UPSS', color: '#8B3A62' }
+];
+
+const MONTHS_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
 const MONTHS_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -32,6 +53,7 @@ const ROOMS = {
       { key: 'JADWAL SHIFT', label: 'Jadwal Shift', type: 'select', options: SHIFT_OPTIONS },
       { key: 'NAMA PETUGAS IGD 1', label: 'Nama Petugas IGD 1', type: 'staff' },
       { key: 'NAMA PETUGAS IGD 2', label: 'Nama Petugas IGD 2', type: 'staff' },
+      { key: 'NAMA PETUGAS IGD 3', label: 'Nama Petugas IGD 3', type: 'staff' },
       { key: 'JUMLAH RESEP TERLAYANI', label: 'Jumlah Resep Terlayani', type: 'number' },
       { key: 'JUMLAH RESEP ELEKTROLIT PEKAT', label: 'Jumlah Resep Elektrolit Pekat', type: 'number' },
       { key: 'JUMLAH RESEP TPN', label: 'Jumlah Resep TPN', type: 'number' },
