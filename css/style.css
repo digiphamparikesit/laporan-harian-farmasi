@@ -163,6 +163,11 @@ body {
   gap: 0 12px;
 }
 
+/* Field yang perlu melebar penuh 1 baris grid, mis. textarea "Daftar Obat" */
+.form-group-full {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 900px) {
   .form-columns {
     flex-direction: column;
@@ -182,7 +187,7 @@ body {
     width: 100%;
   }
   .staff-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -194,6 +199,13 @@ body {
   font-size: 15px;
   background: white;
   color: var(--color-text);
+}
+
+textarea.input {
+  min-height: 78px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
 }
 
 .input:focus {
