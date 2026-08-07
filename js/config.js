@@ -3,6 +3,7 @@
 // (Deploy > New deployment > Web app > copy "Web app URL")
 // =============================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-0eGUbABi8IhtkN2FTBqxEH8S9Pw0y6U2u9LK9DyTjMD0/exec';
+
 // Opsi jadwal shift. Sesuaikan dengan istilah yang dipakai di lapangan.
 const SHIFT_OPTIONS = ['Pagi', 'Middle', 'Sore', 'Malam'];
 
@@ -14,17 +15,17 @@ const ADMIN_ROOM = 'ADMIN';
 // ruangan di layar Rekap Laporan saat login sebagai ADMIN, dan untuk
 // grafik tren tahunan)
 const RECAP_ROOM_LIST = [
-  'IGD', 'IBS', 'DEPO RAWAT INAP', 'UPSS',
+  'DEPO FARMASI IGD', 'DEPO FARMASI IBS', 'DEPO FARMASI IRNA 1 dan Paviliun', 'DEPO FARMASI ONKOLOGI TERPADU',
   'DEPO FARMASI RAWAT JALAN', 'DEPO FARMASI RAWAT JALAN MATERNITAS',
   'DEPO FARMASI IRIN DAN MATERNITAS', 'DEPO FARMASI CATHLAB'
 ];
 
 // Warna khas tiap ruangan untuk grafik garis tren (khusus ADMIN)
 const ROOM_COLORS = {
-  'IGD': '#0F6E6A',
-  'DEPO RAWAT INAP': '#B75B12',
-  'IBS': '#7A3E9D',
-  'UPSS': '#1D4E89',
+  'DEPO FARMASI IGD': '#0F6E6A',
+  'DEPO FARMASI IRNA 1 dan Paviliun': '#B75B12',
+  'DEPO FARMASI IBS': '#7A3E9D',
+  'DEPO FARMASI ONKOLOGI TERPADU': '#1D4E89',
   'DEPO FARMASI RAWAT JALAN': '#C0392B',
   'DEPO FARMASI RAWAT JALAN MATERNITAS': '#D68910',
   'DEPO FARMASI IRIN DAN MATERNITAS': '#117864',
@@ -55,7 +56,7 @@ function buildStaffFields_(prefix, count) {
 }
 
 const ROOMS = {
-  'IGD': {
+  'DEPO FARMASI IGD': {
     label: 'Depo Farmasi IGD',
     fields: [
       { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
@@ -76,7 +77,7 @@ const ROOMS = {
     ]
   },
 
-  'IBS': {
+  'DEPO FARMASI IBS': {
     label: 'Depo Farmasi IBS',
     fields: [
       { key: 'TANGGAL INPUT LAPORAN IBS', label: 'Tanggal Input Laporan IBS', type: 'date' },
@@ -92,7 +93,7 @@ const ROOMS = {
     ]
   },
 
-  'DEPO RAWAT INAP': {
+  'DEPO FARMASI IRNA 1 dan Paviliun': {
     label: 'Depo IRNA 1 dan Paviliun',
     fields: [
       { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
@@ -119,7 +120,7 @@ const ROOMS = {
     ]
   },
 
-  'UPSS': {
+  'DEPO FARMASI ONKOLOGI TERPADU': {
     label: 'Depo Farmasi Onkologi Terpadu',
     fields: [
       { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
