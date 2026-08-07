@@ -2,7 +2,8 @@
 // GANTI dengan URL Web App hasil deploy Apps Script kamu
 // (Deploy > New deployment > Web app > copy "Web app URL")
 // =============================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-0eGUbABi8IhtkN2FTBqxEH8S9Pw0y6U2u9LK9DyTjMD0/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-0eGUbABi8IhtkN2FTBqxEH8S9Pw0y6U2u9LK9DyTjMD0/exec
+';
 
 // Opsi jadwal shift. Sesuaikan dengan istilah yang dipakai di lapangan.
 const SHIFT_OPTIONS = ['Pagi', 'Middle', 'Sore', 'Malam'];
@@ -12,42 +13,52 @@ const SHIFT_OPTIONS = ['Pagi', 'Middle', 'Sore', 'Malam'];
 const ADMIN_ROOM = 'ADMIN';
 
 // Ruangan yang punya data untuk direkap (dipakai untuk dropdown pilihan
-// ruangan di layar Rekap Laporan saat login sebagai ADMIN)
-const RECAP_ROOM_LIST = ['IGD', 'IBS', 'DEPO RAWAT INAP', 'UPSS'];
+// ruangan di layar Rekap Laporan saat login sebagai ADMIN, dan untuk
+// grafik tren tahunan)
+const RECAP_ROOM_LIST = [
+  'IGD', 'IBS', 'DEPO RAWAT INAP', 'UPSS',
+  'DEPO FARMASI RAWAT JALAN', 'DEPO FARMASI RAWAT JALAN MATERNITAS',
+  'DEPO FARMASI IRIN DAN MATERNITAS', 'DEPO FARMASI CATHLAB'
+];
 
 // Warna khas tiap ruangan untuk grafik garis tren (khusus ADMIN)
 const ROOM_COLORS = {
   'IGD': '#0F6E6A',
   'DEPO RAWAT INAP': '#B75B12',
   'IBS': '#7A3E9D',
-  'UPSS': '#1D4E89'
+  'UPSS': '#1D4E89',
+  'DEPO FARMASI RAWAT JALAN': '#C0392B',
+  'DEPO FARMASI RAWAT JALAN MATERNITAS': '#D68910',
+  'DEPO FARMASI IRIN DAN MATERNITAS': '#117864',
+  'DEPO FARMASI CATHLAB': '#5B2C6F'
 };
 
 const MONTHS_ID_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-
-// Konfigurasi grafik garis tren bulanan semua unit (panel khusus ADMIN).
-// Warna dibedakan tiap unit supaya mudah dibaca di legenda.
-const TREND_CONFIG = [
-  { room: 'IGD', label: 'IGD', color: '#0F6E6A' },
-  { room: 'DEPO RAWAT INAP', label: 'Depo Rawat Inap', color: '#B3541E' },
-  { room: 'IBS', label: 'IBS', color: '#375A7F' },
-  { room: 'UPSS', label: 'UPSS', color: '#8B3A62' }
-];
-
-const MONTHS_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 const MONTHS_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-// Tipe field yang didukung: 'date', 'text', 'number', 'select', 'staff'
-// 'staff'  -> dropdown otomatis diisi dari sheet DATA STAFF
-// 'select' -> dropdown, opsi diambil dari properti "options"
+// Tipe field yang didukung: 'date', 'time', 'text', 'textarea', 'number', 'select', 'staff'
+// 'staff'    -> dropdown otomatis diisi dari sheet DATA STAFF
+// 'select'   -> dropdown, opsi diambil dari properti "options"
+// 'time'     -> input jam (HH:MM)
+// 'textarea' -> kotak teks multi-baris (untuk catatan/daftar bebas)
+
+// Helper: bangun banyak field bertipe 'staff' sekaligus, mis.
+// buildStaffFields_('PETUGAS', 19) -> field PETUGAS 1 s.d. PETUGAS 19
+function buildStaffFields_(prefix, count) {
+  const arr = [];
+  for (let i = 1; i <= count; i++) {
+    arr.push({ key: prefix + ' ' + i, label: 'Petugas ' + i, type: 'staff' });
+  }
+  return arr;
+}
 
 const ROOMS = {
   'IGD': {
-    label: 'IGD',
+    label: 'Depo Farmasi IGD',
     fields: [
       { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
       { key: 'JADWAL SHIFT', label: 'Jadwal Shift', type: 'select', options: SHIFT_OPTIONS },
@@ -68,7 +79,7 @@ const ROOMS = {
   },
 
   'IBS': {
-    label: 'IBS',
+    label: 'Depo Farmasi IBS',
     fields: [
       { key: 'TANGGAL INPUT LAPORAN IBS', label: 'Tanggal Input Laporan IBS', type: 'date' },
       { key: 'JADWAL SHIFT', label: 'Jadwal Shift', type: 'select', options: SHIFT_OPTIONS },
@@ -84,7 +95,7 @@ const ROOMS = {
   },
 
   'DEPO RAWAT INAP': {
-    label: 'Depo Rawat Inap',
+    label: 'Depo IRNA 1 dan Paviliun',
     fields: [
       { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
       { key: 'JADWAL SHFT', label: 'Jadwal Shift', type: 'select', options: SHIFT_OPTIONS },
@@ -111,7 +122,7 @@ const ROOMS = {
   },
 
   'UPSS': {
-    label: 'UPSS',
+    label: 'Depo Farmasi Onkologi Terpadu',
     fields: [
       { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
       { key: 'JADWAL SHIFT', label: 'Jadwal Shift', type: 'select', options: SHIFT_OPTIONS },
@@ -130,10 +141,66 @@ const ROOMS = {
     ]
   },
 
-  // TODO: lengkapi field-nya begitu header DEPO TERPADU RAWAT JALAN dikirim.
-  // Sementara ruangan ini akan muncul di daftar tapi ditandai "Segera Hadir".
-  'DEPO TERPADU RAWAT JALAN': {
-    label: 'Depo Terpadu Rawat Jalan',
-    fields: []
+  // ===== 4 DEPO BARU =====
+
+  'DEPO FARMASI RAWAT JALAN': {
+    label: 'Depo Farmasi Rawat Jalan',
+    staffColumns: 3, // 19 petugas, ditata 3 per baris
+    fields: [
+      { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
+      ...buildStaffFields_('PETUGAS', 19),
+      { key: 'JAM AWAL RESEP POLIKLINIK PAGI', label: 'Jam Awal Resep Poliklinik Pagi', type: 'time' },
+      { key: 'JAM AKHIR RESEP POLIKLINIK PAGI', label: 'Jam Akhir Resep Poliklinik Pagi', type: 'time' },
+      { key: 'RESEP POLIKLINIK PERTAMA MASUK', label: 'Resep Poliklinik Pertama Masuk', type: 'time' },
+      { key: 'RESEP POLIKLINIK TERAKHIR MASUK', label: 'Resep Poliklinik Terakhir Masuk', type: 'time' },
+      { key: 'JUMLAH KEGIATAN KONSELING', label: 'Jumlah Kegiatan Konseling', type: 'number' },
+      { key: 'JUMLAH TOTAL RESEP HARIAN', label: 'Jumlah Total Resep Harian', type: 'number' },
+      { key: 'JUMLAH RESEP RACIKAN (POLI PAGI)', label: 'Jumlah Resep Racikan (Poli Pagi)', type: 'number' },
+      { key: 'JUMLAH RESEP RACIKAN (POLI SORE)', label: 'Jumlah Resep Racikan (Poli Sore)', type: 'number' },
+      { key: 'JAM AWAL RESEP POLIKLINIK SORE', label: 'Jam Awal Resep Poliklinik Sore', type: 'time' },
+      { key: 'JAM AKHIR RESEP POLIKLINIK SORE', label: 'Jam Akhir Resep Poliklinik Sore', type: 'time' },
+      { key: 'DAFTAR OBAT TIDAK TERLAYANI', label: 'Daftar Obat Tidak Terlayani', type: 'textarea' }
+    ]
+  },
+
+  'DEPO FARMASI RAWAT JALAN MATERNITAS': {
+    label: 'Depo Farmasi Rawat Jalan Maternitas',
+    fields: [
+      { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
+      ...buildStaffFields_('PETUGAS', 3),
+      { key: 'JAM AWAL RESEP POLIKLINIK PAGI', label: 'Jam Awal Resep Poliklinik Pagi', type: 'time' },
+      { key: 'JAM AKHIR RESEP POLIKLINIK PAGI', label: 'Jam Akhir Resep Poliklinik Pagi', type: 'time' },
+      { key: 'RESEP POLIKLINIK PERTAMA MASUK', label: 'Resep Poliklinik Pertama Masuk', type: 'time' },
+      { key: 'RESEP POLIKLINIK TERAKHIR MASUK', label: 'Resep Poliklinik Terakhir Masuk', type: 'time' },
+      { key: 'JUMLAH KEGIATAN KONSELING', label: 'Jumlah Kegiatan Konseling', type: 'number' },
+      { key: 'JUMLAH TOTAL RESEP HARIAN', label: 'Jumlah Total Resep Harian', type: 'number' },
+      { key: 'JUMLAH RESEP RACIKAN (POLI PAGI)', label: 'Jumlah Resep Racikan (Poli Pagi)', type: 'number' },
+      { key: 'JUMLAH RESEP RACIKAN (POLI SORE)', label: 'Jumlah Resep Racikan (Poli Sore)', type: 'number' },
+      { key: 'JAM AWAL RESEP POLIKLINIK SORE', label: 'Jam Awal Resep Poliklinik Sore', type: 'time' },
+      { key: 'JAM AKHIR RESEP POLIKLINIK SORE', label: 'Jam Akhir Resep Poliklinik Sore', type: 'time' },
+      { key: 'DAFTAR OBAT TIDAK TERLAYANI', label: 'Daftar Obat Tidak Terlayani', type: 'textarea' }
+    ]
+  },
+
+  'DEPO FARMASI IRIN DAN MATERNITAS': {
+    label: 'Depo Farmasi Irin dan Maternitas',
+    fields: [
+      { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
+      { key: 'JADWAL SHIFT', label: 'Jadwal Shift', type: 'select', options: SHIFT_OPTIONS },
+      ...buildStaffFields_('PETUGAS', 8),
+      { key: 'JUMLAH RESEP', label: 'Jumlah Resep', type: 'number' },
+      { key: 'RESEP OBAT PULANG', label: 'Resep Obat Pulang', type: 'number' },
+      { key: 'RESEP RACIKAN', label: 'Resep Racikan', type: 'number' },
+      { key: 'RESEP ELEKTROLIT PEKAT', label: 'Resep Elektrolit Pekat', type: 'number' }
+    ]
+  },
+
+  'DEPO FARMASI CATHLAB': {
+    label: 'Depo Farmasi Cathlab',
+    fields: [
+      { key: 'TANGGAL INPUT LAPORAN', label: 'Tanggal Input Laporan', type: 'date' },
+      { key: 'JADWAL SHIFT', label: 'Jadwal Shift', type: 'select', options: SHIFT_OPTIONS },
+      { key: 'JUMLAH PASIEN', label: 'Jumlah Pasien', type: 'number' }
+    ]
   }
 };
