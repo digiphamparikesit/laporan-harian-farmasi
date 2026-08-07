@@ -128,6 +128,24 @@ logoutBtn.addEventListener('click', function () {
 // TAMPILKAN LAYAR FORM
 // =========================================================
 async function showFormScreen() {
+  // Pengaman: kalau sesi tersimpan (dari login sebelumnya) sudah tidak
+  // valid lagi -- misalnya nama ruangan pernah diganti/dihapus -- jangan
+  // lanjut (nanti error diam-diam / layar kosong), tapi paksa logout dan
+  // kasih pesan jelas ke user supaya login ulang.
+  if (currentRoom !== ADMIN_ROOM && !ROOMS[currentRoom]) {
+    sessionStorage.removeItem('activeRoom');
+    currentRoom = null;
+    loginError.textContent = 'Sesi login sebelumnya sudah tidak berlaku (mungkin ada perubahan data ruangan). Silakan login ulang.';
+    loginError.classList.remove('hidden');
+    loginScreen.classList.remove('hidden');
+    formScreen.classList.add('hidden');
+    recapScreen.classList.add('hidden');
+    tabNav.classList.add('hidden');
+    logoutBtn.classList.add('hidden');
+    activeRoomBadge.classList.add('hidden');
+    return;
+  }
+
   loginScreen.classList.add('hidden');
   recapScreen.classList.add('hidden');
   logoutBtn.classList.remove('hidden');
