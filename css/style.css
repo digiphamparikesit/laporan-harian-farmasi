@@ -33,7 +33,7 @@ body {
 }
 
 .topbar-inner {
-  max-width: 640px;
+  max-width: 1280px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -68,9 +68,9 @@ body {
 }
 
 .container {
-  max-width: 960px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 24px 16px 60px;
+  padding: 24px 24px 60px;
 }
 
 #loginScreen.card {
@@ -117,7 +117,8 @@ body {
 }
 
 .form-col-left {
-  flex: 0 0 34%;
+  flex: 0 0 32%;
+  max-width: 32%;
   position: sticky;
   top: 84px; /* tinggi topbar (~52px) + jarak aman */
   align-self: flex-start;
@@ -126,7 +127,8 @@ body {
 }
 
 .form-col-right {
-  flex: 1 1 62%;
+  flex: 1 1 auto;
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0 20px;
@@ -161,7 +163,7 @@ body {
   gap: 0 12px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .form-columns {
     flex-direction: column;
     gap: 4px;
@@ -304,15 +306,18 @@ body {
   color: #C9E8D8;
 }
 
-/* ===== Rekap: kolom kiri (ringkasan, sticky) & kanan (grafik), sejajar ===== */
+/* ===== Rekap: kolom kiri (ringkasan, sticky) & kanan (grafik), rata kiri-kanan penuh ===== */
 .recap-columns {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 24px;
+  width: 100%;
 }
 
 .recap-summary-sticky {
-  flex: 0 0 38%;
+  flex: 0 0 36%;
+  max-width: 36%;
   position: sticky;
   top: 84px; /* tinggi topbar (~52px) + jarak aman */
   z-index: 40;
@@ -320,11 +325,12 @@ body {
 }
 
 .recap-chart-card {
-  flex: 1 1 60%;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 240px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .recap-columns {
     flex-direction: column;
   }
@@ -332,10 +338,67 @@ body {
     position: static;
     box-shadow: none;
     width: 100%;
+    max-width: 100%;
   }
   .recap-chart-card {
     width: 100%;
   }
+}
+
+/* ===== Panel Grafik Tren Semua Unit (khusus ADMIN) ===== */
+.recap-trend-panel {
+  margin-top: 20px;
+}
+
+.line-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 16px 0 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.line-chart {
+  width: 100%;
+}
+
+.trend-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.trend-grid-line {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.trend-axis-label {
+  font-size: 10px;
+  fill: var(--color-text-muted);
+  font-family: var(--font-body);
+}
+
+.trend-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ===== Grafik Batang Mendatar ===== */
