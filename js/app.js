@@ -29,6 +29,10 @@ const recapMonth = document.getElementById('recapMonth');
 const statCards = document.getElementById('statCards');
 const chartTitle = document.getElementById('chartTitle');
 const barChart = document.getElementById('barChart');
+const adminTrendPanel = document.getElementById('adminTrendPanel');
+const trendYearLabel = document.getElementById('trendYearLabel');
+const lineChartLegend = document.getElementById('lineChartLegend');
+const lineChart = document.getElementById('lineChart');
 
 // =========================================================
 // HELPER: panggil Apps Script (pakai text/plain agar tak kena preflight CORS)
@@ -114,6 +118,7 @@ logoutBtn.addEventListener('click', function () {
   tabNav.classList.add('hidden');
   tabInputBtn.classList.remove('hidden');
   adminRoomFilterWrap.classList.add('hidden');
+  adminTrendPanel.classList.add('hidden');
   logoutBtn.classList.add('hidden');
   activeRoomBadge.classList.add('hidden');
   loginScreen.classList.remove('hidden');
@@ -134,6 +139,7 @@ async function showFormScreen() {
     formScreen.classList.add('hidden');
     tabInputBtn.classList.add('hidden');
     adminRoomFilterWrap.classList.remove('hidden');
+    adminTrendPanel.classList.remove('hidden');
 
     if (adminRoomSelect.options.length === 0) {
       RECAP_ROOM_LIST.forEach(function (roomKey) {
@@ -153,6 +159,7 @@ async function showFormScreen() {
 
   tabInputBtn.classList.remove('hidden');
   adminRoomFilterWrap.classList.add('hidden');
+  adminTrendPanel.classList.add('hidden');
   formScreen.classList.remove('hidden');
   activeRoomBadge.textContent = ROOMS[currentRoom].label;
   formTitle.textContent = 'Input Laporan - ' + ROOMS[currentRoom].label;
@@ -172,7 +179,7 @@ async function showFormScreen() {
 // =========================================================
 function buildFieldGroup(field) {
   const wrapper = document.createElement('div');
-  wrapper.className = 'form-group';
+  wrapper.className = 'form-group' + (field.type === 'textarea' ? ' form-group-full' : '');
 
   const label = document.createElement('label');
   label.className = 'field-label';
@@ -190,6 +197,13 @@ function buildFieldGroup(field) {
     inputEl.type = 'number';
     inputEl.min = '0';
     inputEl.inputMode = 'numeric';
+  } else if (field.type === 'time') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'time';
+  } else if (field.type === 'textarea') {
+    inputEl = document.createElement('textarea');
+    inputEl.rows = 3;
+    inputEl.placeholder = 'Tulis daftar/catatan di sini...';
   } else if (field.type === 'select') {
     inputEl = document.createElement('select');
     const emptyOpt = document.createElement('option');
@@ -248,9 +262,11 @@ function renderForm(roomKey) {
   const rightCol = document.createElement('div');
   rightCol.className = 'form-col form-col-right';
 
-  const metaFields = fields.filter(function (f) { return f.type !== 'number' && f.type !== 'staff'; });
+  const metaFields = fields.filter(function (f) { return f.type === 'date' || f.type === 'select'; });
   const staffFields = fields.filter(function (f) { return f.type === 'staff'; });
-  const numberFields = fields.filter(function (f) { return f.type === 'number'; });
+  const otherFields = fields.filter(function (f) {
+    return f.type !== 'date' && f.type !== 'select' && f.type !== 'staff';
+  });
 
   metaFields.forEach(function (f) { leftCol.appendChild(buildFieldGroup(f)); });
 
@@ -263,6 +279,7 @@ function renderForm(roomKey) {
       groups[g].push(f);
     });
 
+    const staffColumns = ROOMS[roomKey].staffColumns || 2;
     const staffWrap = document.createElement('div');
     staffWrap.className = 'staff-section';
 
@@ -275,6 +292,7 @@ function renderForm(roomKey) {
       }
       const grid = document.createElement('div');
       grid.className = 'staff-grid';
+      grid.style.gridTemplateColumns = 'repeat(' + staffColumns + ', 1fr)';
       groups[g].forEach(function (f) { grid.appendChild(buildFieldGroup(f)); });
       staffWrap.appendChild(grid);
     });
@@ -282,7 +300,7 @@ function renderForm(roomKey) {
     leftCol.appendChild(staffWrap);
   }
 
-  numberFields.forEach(function (f) { rightCol.appendChild(buildFieldGroup(f)); });
+  otherFields.forEach(function (f) { rightCol.appendChild(buildFieldGroup(f)); });
 
   columnsWrap.appendChild(leftCol);
   columnsWrap.appendChild(rightCol);
@@ -406,6 +424,10 @@ async function loadRecap() {
   const numericFields = ROOMS[room].fields.filter(function (f) { return f.type === 'number'; });
   renderStatCards(numericFields, result.data);
   renderBarChart(numericFields, result.data);
+
+  if (currentRoom === ADMIN_ROOM) {
+    loadTrend();
+  }
 }
 
 function renderStatCards(fields, data) {
@@ -462,4 +484,99 @@ function renderBarChart(fields, data) {
 
     requestAnimationFrame(function () { fill.style.width = pct + '%'; });
   });
+}
+
+// =========================================================
+// GRAFIK TREN SEMUA UNIT (khusus ADMIN) - grafik garis per bulan
+// =========================================================
+async function loadTrend() {
+  const tahun = recapYear.value;
+  trendYearLabel.textContent = tahun;
+
+  const result = await callApi({ action: 'getYearlyTrend', tahun: tahun });
+
+  if (!result.success) {
+    lineChart.innerHTML = '<p class="error-text">' + (result.message || 'Gagal memuat grafik tren.') + '</p>';
+    lineChartLegend.innerHTML = '';
+    return;
+  }
+
+  renderTrendLegend();
+  renderTrendChart(result.data);
+}
+
+function renderTrendLegend() {
+  lineChartLegend.innerHTML = '';
+  RECAP_ROOM_LIST.forEach(function (roomKey) {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+
+    const dot = document.createElement('span');
+    dot.className = 'legend-dot';
+    dot.style.background = ROOM_COLORS[roomKey];
+
+    const label = document.createElement('span');
+    label.textContent = ROOMS[roomKey].label;
+
+    item.appendChild(dot);
+    item.appendChild(label);
+    lineChartLegend.appendChild(item);
+  });
+}
+
+function renderTrendChart(data) {
+  const width = 760;
+  const height = 300;
+  const padLeft = 44;
+  const padRight = 16;
+  const padTop = 16;
+  const padBottom = 32;
+  const innerW = width - padLeft - padRight;
+  const innerH = height - padTop - padBottom;
+
+  let maxValue = 1;
+  RECAP_ROOM_LIST.forEach(function (roomKey) {
+    (data[roomKey] || []).forEach(function (v) { if (v > maxValue) maxValue = v; });
+  });
+
+  const xStep = innerW / 11; // 12 titik bulan (index 0-11)
+  const xAt = function (i) { return padLeft + i * xStep; };
+  const yAt = function (v) { return padTop + innerH - (v / maxValue) * innerH; };
+
+  let svg = '<svg viewBox="0 0 ' + width + ' ' + height + '" class="trend-svg" xmlns="http://www.w3.org/2000/svg">';
+
+  // Garis bantu horizontal + label sumbu Y
+  [0, 0.25, 0.5, 0.75, 1].forEach(function (t) {
+    const y = padTop + innerH - t * innerH;
+    const val = Math.round(maxValue * t);
+    svg += '<line x1="' + padLeft + '" y1="' + y + '" x2="' + (width - padRight) + '" y2="' + y + '" class="trend-grid-line" />';
+    svg += '<text x="' + (padLeft - 8) + '" y="' + (y + 4) + '" class="trend-axis-label" text-anchor="end">' + val.toLocaleString('id-ID') + '</text>';
+  });
+
+  // Label sumbu X (nama bulan singkat)
+  MONTHS_ID_SHORT.forEach(function (m, i) {
+    svg += '<text x="' + xAt(i) + '" y="' + (height - 10) + '" class="trend-axis-label" text-anchor="middle">' + m + '</text>';
+  });
+
+  // Garis tiap ruangan + titik data
+  RECAP_ROOM_LIST.forEach(function (roomKey) {
+    const values = data[roomKey] || new Array(12).fill(0);
+    const color = ROOM_COLORS[roomKey];
+
+    let points = '';
+    values.forEach(function (v, i) {
+      points += xAt(i) + ',' + yAt(v) + ' ';
+    });
+
+    svg += '<polyline points="' + points.trim() + '" class="trend-line" style="stroke:' + color + '" />';
+
+    values.forEach(function (v, i) {
+      svg += '<circle cx="' + xAt(i) + '" cy="' + yAt(v) + '" r="3.5" style="fill:' + color + '"><title>' +
+        ROOMS[roomKey].label + ' - ' + MONTHS_ID_SHORT[i] + ': ' + v.toLocaleString('id-ID') +
+        '</title></circle>';
+    });
+  });
+
+  svg += '</svg>';
+  lineChart.innerHTML = svg;
 }
