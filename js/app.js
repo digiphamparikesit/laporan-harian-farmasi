@@ -33,6 +33,8 @@ const adminTrendPanel = document.getElementById('adminTrendPanel');
 const trendYearLabel = document.getElementById('trendYearLabel');
 const lineChartLegend = document.getElementById('lineChartLegend');
 const lineChart = document.getElementById('lineChart');
+const dailyRoomLabel = document.getElementById('dailyRoomLabel');
+const dailyCalendar = document.getElementById('dailyCalendar');
 
 // =========================================================
 // HELPER: panggil Apps Script (pakai text/plain agar tak kena preflight CORS)
@@ -443,6 +445,8 @@ async function loadRecap() {
   renderStatCards(numericFields, result.data);
   renderBarChart(numericFields, result.data);
 
+  loadDailyStatus(room);
+
   if (currentRoom === ADMIN_ROOM) {
     loadTrend();
   }
@@ -597,4 +601,61 @@ function renderTrendChart(data) {
 
   svg += '</svg>';
   lineChart.innerHTML = svg;
+}
+
+// =========================================================
+// KELENGKAPAN LAPORAN PER TANGGAL (cek tanggal yang belum ada laporan)
+// =========================================================
+async function loadDailyStatus(room) {
+  dailyRoomLabel.textContent = ROOMS[room].label;
+
+  const bulan = recapMonth.value;
+  const tahun = recapYear.value;
+
+  if (!bulan) {
+    dailyCalendar.innerHTML = '<p class="error-text">Pilih Bulan tertentu di filter atas (bukan "Semua Bulan") untuk melihat kelengkapan laporan per tanggal.</p>';
+    return;
+  }
+
+  const result = await callApi({
+    action: 'getDailyStatus',
+    room: room,
+    bulan: bulan,
+    tahun: tahun
+  });
+
+  if (!result.success) {
+    dailyCalendar.innerHTML = '<p class="error-text">' + (result.message || 'Gagal memuat kelengkapan laporan.') + '</p>';
+    return;
+  }
+
+  renderDailyCalendar(result.daysInMonth, result.data, Number(tahun), Number(bulan));
+}
+
+function renderDailyCalendar(daysInMonth, counts, tahun, bulanNum) {
+  dailyCalendar.innerHTML = '';
+
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === tahun && (today.getMonth() + 1) === bulanNum;
+  const todayDate = today.getDate();
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const jumlah = counts[d] || 0;
+    const isFuture = isCurrentMonth ? d > todayDate : new Date(tahun, bulanNum - 1, d) > today;
+
+    const box = document.createElement('div');
+    box.className = 'day-box ' + (jumlah > 0 ? 'day-ok' : (isFuture ? 'day-future' : 'day-missing'));
+
+    const num = document.createElement('div');
+    num.className = 'day-num';
+    num.textContent = d;
+
+    const info = document.createElement('div');
+    info.className = 'day-info';
+    info.textContent = jumlah > 0 ? (jumlah + ' laporan') : (isFuture ? '-' : 'kosong');
+
+    box.appendChild(num);
+    box.appendChild(info);
+    dailyCalendar.appendChild(box);
+  }
 }
