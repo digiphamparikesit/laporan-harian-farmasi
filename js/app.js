@@ -35,6 +35,10 @@ const lineChartLegend = document.getElementById('lineChartLegend');
 const lineChart = document.getElementById('lineChart');
 const dailyRoomLabel = document.getElementById('dailyRoomLabel');
 const dailyCalendar = document.getElementById('dailyCalendar');
+const reportModalOverlay = document.getElementById('reportModalOverlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+const modalCloseBtn = document.getElementById('modalCloseBtn');
 
 // =========================================================
 // HELPER: panggil Apps Script (pakai text/plain agar tak kena preflight CORS)
@@ -629,10 +633,10 @@ async function loadDailyStatus(room) {
     return;
   }
 
-  renderDailyCalendar(result.daysInMonth, result.data, Number(tahun), Number(bulan));
+  renderDailyCalendar(result.daysInMonth, result.data, Number(tahun), Number(bulan), room);
 }
 
-function renderDailyCalendar(daysInMonth, counts, tahun, bulanNum) {
+function renderDailyCalendar(daysInMonth, counts, tahun, bulanNum, room) {
   dailyCalendar.innerHTML = '';
 
   const today = new Date();
@@ -644,7 +648,7 @@ function renderDailyCalendar(daysInMonth, counts, tahun, bulanNum) {
     const isFuture = isCurrentMonth ? d > todayDate : new Date(tahun, bulanNum - 1, d) > today;
 
     const box = document.createElement('div');
-    box.className = 'day-box ' + (jumlah > 0 ? 'day-ok' : (isFuture ? 'day-future' : 'day-missing'));
+    box.className = 'day-box ' + (jumlah > 0 ? 'day-ok day-clickable' : (isFuture ? 'day-future' : 'day-missing'));
 
     const num = document.createElement('div');
     num.className = 'day-num';
@@ -656,6 +660,87 @@ function renderDailyCalendar(daysInMonth, counts, tahun, bulanNum) {
 
     box.appendChild(num);
     box.appendChild(info);
+
+    if (jumlah > 0) {
+      box.title = 'Klik untuk lihat detail laporan';
+      box.addEventListener('click', function () {
+        openDayReports(room, d, bulanNum, tahun);
+      });
+    }
+
     dailyCalendar.appendChild(box);
   }
+}
+
+// =========================================================
+// POP-UP DETAIL ISI LAPORAN PADA SATU TANGGAL
+// =========================================================
+modalCloseBtn.addEventListener('click', closeReportModal);
+reportModalOverlay.addEventListener('click', function (e) {
+  if (e.target === reportModalOverlay) closeReportModal();
+});
+
+function closeReportModal() {
+  reportModalOverlay.classList.add('hidden');
+}
+
+async function openDayReports(room, day, bulanNum, tahun) {
+  modalTitle.textContent = ROOMS[room].label + ' - ' + day + ' ' + MONTHS_ID[bulanNum - 1] + ' ' + tahun;
+  modalBody.innerHTML = '<p class="card-subtitle">Memuat...</p>';
+  reportModalOverlay.classList.remove('hidden');
+
+  const result = await callApi({
+    action: 'getDayReports',
+    room: room,
+    tanggal: day,
+    bulan: bulanNum,
+    tahun: tahun
+  });
+
+  if (!result.success) {
+    modalBody.innerHTML = '<p class="error-text">' + (result.message || 'Gagal memuat detail laporan.') + '</p>';
+    return;
+  }
+
+  if (result.reports.length === 0) {
+    modalBody.innerHTML = '<p class="card-subtitle">Tidak ada laporan pada tanggal ini.</p>';
+    return;
+  }
+
+  modalBody.innerHTML = '';
+  result.reports.forEach(function (rep, idx) {
+    const block = document.createElement('div');
+    block.className = 'modal-report-block';
+
+    const heading = document.createElement('div');
+    heading.className = 'modal-report-heading';
+    heading.textContent = 'Laporan ke-' + (idx + 1) + ' dari ' + result.reports.length;
+    block.appendChild(heading);
+
+    const table = document.createElement('div');
+    table.className = 'modal-report-table';
+
+    ROOMS[room].fields.forEach(function (f) {
+      const val = rep[f.key];
+      if (val === undefined || val === null || val === '') return;
+
+      const row = document.createElement('div');
+      row.className = 'modal-report-row';
+
+      const label = document.createElement('span');
+      label.className = 'modal-report-label';
+      label.textContent = f.label;
+
+      const value = document.createElement('span');
+      value.className = 'modal-report-value';
+      value.textContent = val;
+
+      row.appendChild(label);
+      row.appendChild(value);
+      table.appendChild(row);
+    });
+
+    block.appendChild(table);
+    modalBody.appendChild(block);
+  });
 }
