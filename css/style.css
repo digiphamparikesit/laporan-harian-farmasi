@@ -357,6 +357,63 @@ textarea.input {
   }
 }
 
+/* ===== Panel Kelengkapan Laporan per Tanggal ===== */
+.recap-daily-card {
+  margin-top: 20px;
+}
+
+.daily-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+.daily-calendar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.day-box {
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+  border: 1px solid transparent;
+}
+
+.day-num {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.day-info {
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.day-ok {
+  background: #E3F3EC;
+  border-color: #A9DCC3;
+  color: #0B5A3B;
+}
+
+.day-missing {
+  background: #FDECEA;
+  border-color: #F3B4AE;
+  color: #A32E27;
+}
+
+.day-future {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
 /* ===== Panel Grafik Tren Semua Unit (khusus ADMIN) ===== */
 .recap-trend-panel {
   margin-top: 20px;
