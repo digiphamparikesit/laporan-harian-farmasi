@@ -4,6 +4,18 @@
 let staffList = [];
 let currentRoom = null;
 
+// State mode edit laporan: diisi saat user klik tombol "Edit" pada
+// pop-up detail laporan (openDayReports). editingReportRow = nomor baris
+// asli di sheet (dari field _row hasil getDayReports_/getMonthlyReports_).
+// editingCheckTanggal = tanggal yang tercatat di baris tsb saat dibuka,
+// dipakai backend sebagai pengaman sebelum menimpa baris.
+let editingReportRow = null;
+let editingCheckTanggal = null;
+
+// Data laporan rekap 1 bulan terakhir yang dimuat untuk modal export
+// (dipakai ulang oleh tombol Export Excel tanpa perlu fetch ulang).
+let lastExportData = null;
+
 const loginScreen = document.getElementById('loginScreen');
 const formScreen = document.getElementById('formScreen');
 const roomSelect = document.getElementById('roomSelect');
@@ -17,6 +29,10 @@ const submitMessage = document.getElementById('submitMessage');
 const logoutBtn = document.getElementById('logoutBtn');
 const activeRoomBadge = document.getElementById('activeRoomBadge');
 const loadingOverlay = document.getElementById('loadingOverlay');
+
+const editBanner = document.getElementById('editBanner');
+const editBannerDate = document.getElementById('editBannerDate');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
 
 const tabNav = document.getElementById('tabNav');
 const tabInputBtn = document.getElementById('tabInputBtn');
@@ -40,6 +56,14 @@ const modalTitle = document.getElementById('modalTitle');
 const modalBody = document.getElementById('modalBody');
 const modalCloseBtn = document.getElementById('modalCloseBtn');
 
+const exportOpenBtn = document.getElementById('exportOpenBtn');
+const exportModalOverlay = document.getElementById('exportModalOverlay');
+const exportModalTitle = document.getElementById('exportModalTitle');
+const exportTableWrap = document.getElementById('exportTableWrap');
+const exportExcelBtn = document.getElementById('exportExcelBtn');
+const exportPrintBtn = document.getElementById('exportPrintBtn');
+const exportCloseBtn = document.getElementById('exportCloseBtn');
+
 // =========================================================
 // HELPER: panggil Apps Script (pakai text/plain agar tak kena preflight CORS)
 // =========================================================
@@ -61,6 +85,10 @@ async function callApi(payload) {
 
 function showLoading(state) {
   loadingOverlay.classList.toggle('hidden', !state);
+}
+
+function escapeHtml_(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // =========================================================
@@ -119,6 +147,7 @@ loginBtn.addEventListener('click', async function () {
 logoutBtn.addEventListener('click', function () {
   sessionStorage.removeItem('activeRoom');
   currentRoom = null;
+  stopEditMode();
   formScreen.classList.add('hidden');
   recapScreen.classList.add('hidden');
   tabNav.classList.add('hidden');
@@ -332,7 +361,7 @@ function renderForm(roomKey) {
 }
 
 // =========================================================
-// SUBMIT LAPORAN
+// SUBMIT LAPORAN (mendukung mode Simpan Baru & mode Edit/Update)
 // =========================================================
 submitBtn.addEventListener('click', async function () {
   submitMessage.classList.add('hidden');
@@ -355,16 +384,75 @@ submitBtn.addEventListener('click', async function () {
     return;
   }
 
-  const result = await callApi({ action: 'submitReport', room: currentRoom, data: data });
+  const payload = editingReportRow
+    ? { action: 'updateReport', room: currentRoom, row: editingReportRow, data: data, checkTanggal: editingCheckTanggal }
+    : { action: 'submitReport', room: currentRoom, data: data };
+
+  const result = await callApi(payload);
 
   if (result.success) {
-    submitMessage.textContent = 'Laporan berhasil disimpan.';
+    submitMessage.textContent = editingReportRow ? 'Laporan berhasil diperbarui.' : 'Laporan berhasil disimpan.';
     submitMessage.className = 'success-text';
+    stopEditMode();
     renderForm(currentRoom); // reset form
   } else {
-    submitMessage.textContent = result.message || 'Gagal menyimpan laporan.';
+    submitMessage.textContent = result.message || (editingReportRow ? 'Gagal memperbarui laporan.' : 'Gagal menyimpan laporan.');
     submitMessage.className = 'error-text';
   }
+});
+
+// =========================================================
+// MODE EDIT LAPORAN
+// Dipanggil dari tombol "Edit" pada pop-up detail laporan (openDayReports).
+// Form input yang sudah ada dipakai ulang (bukan bikin layar baru): field
+// diisi otomatis dari data laporan yang diklik, lalu tombol submit
+// berubah jadi "Update Laporan" dan mengirim action 'updateReport'
+// beserta nomor baris aslinya supaya tidak menimpa baris/laporan lain.
+// =========================================================
+function startEditReport(room, rep) {
+  if (currentRoom !== room) {
+    alert('Untuk mengedit laporan ini, login sebagai ruangan "' + ROOMS[room].label + '" terlebih dahulu.');
+    return;
+  }
+  closeReportModal();
+  exportModalOverlay.classList.add('hidden');
+
+  editingReportRow = rep._row;
+  const dateKey = ROOMS[room].fields[0].key; // kolom pertama selalu tanggal
+  editingCheckTanggal = rep[dateKey];
+
+  setActiveTab('input');
+  renderForm(room);
+
+  ROOMS[room].fields.forEach(function (f) {
+    const el = document.getElementById('f_' + f.key);
+    if (!el) return;
+    let val = rep[f.key];
+    if (val === undefined || val === null) val = '';
+    if (f.type === 'date' && val) {
+      const parts = String(val).split('/'); // dd/MM/yyyy -> yyyy-MM-dd (format input type=date)
+      if (parts.length === 3) val = parts[2] + '-' + parts[1] + '-' + parts[0];
+    }
+    el.value = val;
+  });
+
+  submitBtn.textContent = 'Update Laporan';
+  editBannerDate.textContent = editingCheckTanggal;
+  editBanner.classList.remove('hidden');
+  formScreen.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function stopEditMode() {
+  editingReportRow = null;
+  editingCheckTanggal = null;
+  submitBtn.textContent = 'Simpan Laporan';
+  editBanner.classList.add('hidden');
+}
+
+cancelEditBtn.addEventListener('click', function () {
+  stopEditMode();
+  submitMessage.classList.add('hidden');
+  renderForm(currentRoom);
 });
 
 init();
@@ -712,9 +800,23 @@ async function openDayReports(room, day, bulanNum, tahun) {
     const block = document.createElement('div');
     block.className = 'modal-report-block';
 
+    // Heading + tombol Edit. Tombol ini membawa user ke tab Input Laporan
+    // dengan form sudah terisi otomatis dari laporan yang dipilih, supaya
+    // salah input / laporan dobel bisa langsung dibetulkan tanpa harus
+    // hapus-tambah manual di sheet.
     const heading = document.createElement('div');
     heading.className = 'modal-report-heading';
-    heading.textContent = 'Laporan ke-' + (idx + 1) + ' dari ' + result.reports.length;
+
+    const headingText = document.createElement('span');
+    headingText.textContent = 'Laporan ke-' + (idx + 1) + ' dari ' + result.reports.length;
+    heading.appendChild(headingText);
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-edit-report';
+    editBtn.textContent = '✏️ Edit';
+    editBtn.addEventListener('click', function () { startEditReport(room, rep); });
+    heading.appendChild(editBtn);
+
     block.appendChild(heading);
 
     const table = document.createElement('div');
@@ -744,3 +846,121 @@ async function openDayReports(room, day, bulanNum, tahun) {
     modalBody.appendChild(block);
   });
 }
+
+// =========================================================
+// REKAP DATA PELAYANAN: EXPORT EXCEL & PREVIEW CETAK
+// Menampilkan semua laporan 1 bulan (per tanggal & shift, semua kolom)
+// dalam sebuah tabel, dengan baris Total di akhir untuk tiap kolom angka.
+// =========================================================
+exportOpenBtn.addEventListener('click', openExportPreview);
+exportCloseBtn.addEventListener('click', function () { exportModalOverlay.classList.add('hidden'); });
+exportModalOverlay.addEventListener('click', function (e) {
+  if (e.target === exportModalOverlay) exportModalOverlay.classList.add('hidden');
+});
+
+async function openExportPreview() {
+  const room = getTargetRoom();
+  if (!room) return;
+  if (!recapMonth.value) {
+    alert('Pilih Bulan tertentu (bukan "Semua Bulan") di filter atas untuk melihat laporan rekap.');
+    return;
+  }
+
+  const result = await callApi({
+    action: 'getMonthlyReports',
+    room: room,
+    bulan: recapMonth.value,
+    tahun: recapYear.value
+  });
+
+  if (!result.success) {
+    alert(result.message || 'Gagal memuat laporan rekap.');
+    return;
+  }
+
+  const fields = ROOMS[room].fields;
+  const monthLabel = MONTHS_ID[Number(recapMonth.value) - 1];
+  exportModalTitle.textContent = 'Rekap ' + ROOMS[room].label + ' - ' + monthLabel + ' ' + recapYear.value;
+
+  lastExportData = {
+    room: room, label: ROOMS[room].label, monthLabel: monthLabel,
+    tahun: recapYear.value, fields: fields, reports: result.reports
+  };
+
+  renderExportTable(fields, result.reports);
+  exportModalOverlay.classList.remove('hidden');
+}
+
+function renderExportTable(fields, reports) {
+  const totals = {};
+  fields.forEach(function (f) { if (f.type === 'number') totals[f.key] = 0; });
+
+  let html = '<table class="export-table"><thead><tr>';
+  fields.forEach(function (f) { html += '<th>' + f.label + '</th>'; });
+  html += '</tr></thead><tbody>';
+
+  if (reports.length === 0) {
+    html += '<tr><td colspan="' + fields.length + '" class="export-empty">Tidak ada laporan pada bulan ini.</td></tr>';
+  }
+
+  reports.forEach(function (rep) {
+    html += '<tr>';
+    fields.forEach(function (f) {
+      const val = (rep[f.key] !== undefined && rep[f.key] !== null && rep[f.key] !== '') ? rep[f.key] : '-';
+      if (f.type === 'number') totals[f.key] += Number(rep[f.key]) || 0;
+      html += '<td>' + escapeHtml_(val) + '</td>';
+    });
+    html += '</tr>';
+  });
+
+  if (reports.length > 0) {
+    html += '<tr class="export-total-row">';
+    fields.forEach(function (f, idx) {
+      if (idx === 0) html += '<td>Total</td>';
+      else if (f.type === 'number') html += '<td>' + totals[f.key].toLocaleString('id-ID') + '</td>';
+      else html += '<td></td>';
+    });
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+  exportTableWrap.innerHTML = html;
+}
+
+exportPrintBtn.addEventListener('click', function () {
+  window.print();
+});
+
+exportExcelBtn.addEventListener('click', function () {
+  if (!lastExportData || lastExportData.reports.length === 0) {
+    alert('Tidak ada data untuk diexport.');
+    return;
+  }
+  const fields = lastExportData.fields;
+  const totals = {};
+  fields.forEach(function (f) { if (f.type === 'number') totals[f.key] = 0; });
+
+  const rows = lastExportData.reports.map(function (rep) {
+    const row = {};
+    fields.forEach(function (f) {
+      const val = (rep[f.key] !== undefined && rep[f.key] !== null) ? rep[f.key] : '';
+      if (f.type === 'number') totals[f.key] += Number(val) || 0;
+      row[f.label] = val;
+    });
+    return row;
+  });
+
+  const totalRow = {};
+  fields.forEach(function (f, idx) {
+    totalRow[f.label] = idx === 0 ? 'Total' : (f.type === 'number' ? totals[f.key] : '');
+  });
+  rows.push(totalRow);
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
+
+  const filename = 'Rekap_' + lastExportData.room.replace(/[^A-Za-z0-9]+/g, '_') + '_' +
+    lastExportData.monthLabel + '_' + lastExportData.tahun + '.xlsx';
+  XLSX.writeFile(wb, filename);
+});
