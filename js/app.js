@@ -385,7 +385,7 @@ function drawLineChart(datasets, labels) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN
+// MODAL DETAIL & EDIT LAPORAN (DIPERBAIKI DENGAN TRY-CATCH)
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
@@ -400,16 +400,24 @@ async function showDayReports(room, tanggal, bulan, tahun) {
   if (result.reports.length === 0) { modalBody.innerHTML = '<p>Tidak ada laporan untuk tanggal ini.</p>'; return; }
 
   result.reports.forEach((report) => {
-    const reportDiv = document.createElement('div');
-    reportDiv.className = 'report-item';
-    reportDiv.innerHTML = `<div><strong>Shift: ${report.shift || '-'}</strong></div><pre>${JSON.stringify(report, null, 2)}</pre>`;
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Edit Laporan Ini';
-    editBtn.className = 'btn-warning';
-    editBtn.style.marginTop = '10px';
-    editBtn.onclick = function() { openEditModal(report); };
-    reportDiv.appendChild(editBtn);
-    modalBody.appendChild(reportDiv);
+    try {
+      const reportDiv = document.createElement('div');
+      reportDiv.className = 'report-item';
+      
+      // Tampilkan dengan aman
+      const shiftValue = report.shift || report['JADWAL SHIFT'] || report['JADWAL_SHIFT'] || '-';
+      reportDiv.innerHTML = `<div><strong>Shift: ${shiftValue}</strong></div><pre>${JSON.stringify(report, null, 2)}</pre>`;
+      
+      const editBtn = document.createElement('button');
+      editBtn.textContent = 'Edit Laporan Ini';
+      editBtn.className = 'btn-warning';
+      editBtn.style.marginTop = '10px';
+      editBtn.onclick = function() { openEditModal(report); };
+      reportDiv.appendChild(editBtn);
+      modalBody.appendChild(reportDiv);
+    } catch (err) {
+      console.error('Error rendering report item:', err);
+    }
   });
 }
 
@@ -433,9 +441,9 @@ function openEditModal(report) {
 
   editReportForm.innerHTML = '';
   const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect.value];
-  if (!room) return;
+  if (!room) { alert('Konfigurasi ruangan tidak ditemukan!'); return; }
 
-  // Pencarian data yang lebih fleksibel (menghilangkan spasi, underscore, tanda kurung, dan garis miring)
+  // Pencarian data yang lebih fleksibel
   function getValueFromReport(fieldKey) {
     if (report[fieldKey] !== undefined && report[fieldKey] !== null) return report[fieldKey];
     var possibleKey = fieldKey.replace(/_/g, ' ');
@@ -472,7 +480,10 @@ function openEditModal(report) {
         option.textContent = opt;
         input.appendChild(option);
       });
-      input.value = rawValue || '';
+      // Set nilai jika ada di opsi
+      if (rawValue && field.options.includes(rawValue)) {
+        input.value = rawValue;
+      }
     } else if (field.type === 'textarea') {
       input = document.createElement('textarea');
       input.className = 'input';
@@ -501,7 +512,10 @@ function openEditModal(report) {
         option.textContent = staff.nama;
         input.appendChild(option);
       });
-      input.value = rawValue || '';
+      // Set nilai jika staff ada di daftar
+      if (rawValue) {
+        input.value = rawValue;
+      }
     } else {
       input = document.createElement('input');
       input.className = 'input';
