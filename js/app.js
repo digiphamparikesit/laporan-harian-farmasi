@@ -76,10 +76,28 @@ function showLoading(state) {
 }
 
 // =========================================================
+// VALIDASI RUANGAN (MENGGUNAKAN FUNGSI DARI CONFIG)
+// =========================================================
+function isValidRoom(roomKey) {
+  if (!roomKey) return false;
+  if (roomKey === ADMIN_ROOM) return true;
+  return ROOMS.hasOwnProperty(roomKey);
+}
+
+function getRoomLabel(roomKey) {
+  if (roomKey === ADMIN_ROOM) return 'ADMIN';
+  return ROOMS[roomKey] ? ROOMS[roomKey].label : 'Unknown';
+}
+
+// =========================================================
 // INIT
 // =========================================================
 function init() {
-  // Populate room select from ROOMS config
+  console.log('INIT: Memulai aplikasi...');
+  console.log('ROOMS tersedia:', Object.keys(ROOMS));
+  console.log('RECAP_ROOM_LIST:', RECAP_ROOM_LIST);
+  
+  // Populate room select dari ROOMS
   Object.keys(ROOMS).forEach(function (roomKey) {
     const opt = document.createElement('option');
     opt.value = roomKey;
@@ -87,26 +105,37 @@ function init() {
     roomSelect.appendChild(opt);
   });
 
-  // Add admin option
+  // Tambahkan admin option
   const adminOpt = document.createElement('option');
   adminOpt.value = ADMIN_ROOM;
   adminOpt.textContent = 'ADMIN (Lihat Semua Laporan)';
   roomSelect.appendChild(adminOpt);
 
+  // Cek session tersimpan
   const savedRoom = sessionStorage.getItem('activeRoom');
-  if (savedRoom && (ROOMS[savedRoom] || savedRoom === ADMIN_ROOM)) {
+  console.log('Session tersimpan:', savedRoom);
+  
+  if (savedRoom && isValidRoom(savedRoom)) {
     currentRoom = savedRoom;
+    console.log('Memuat session:', currentRoom);
     showFormScreen();
+  } else {
+    console.log('Tidak ada session valid, menampilkan login');
+    if (savedRoom) {
+      sessionStorage.removeItem('activeRoom');
+    }
   }
 }
 
 // =========================================================
-// LOGIN - DENGAN VALIDASI
+// LOGIN - DENGAN VALIDASI KETAT
 // =========================================================
 loginBtn.addEventListener('click', async function () {
   const room = roomSelect.value;
   const password = passwordInput.value.trim();
   loginError.classList.add('hidden');
+
+  console.log('Login attempt - Room:', room);
 
   if (!password) {
     loginError.textContent = 'Password wajib diisi.';
@@ -114,13 +143,32 @@ loginBtn.addEventListener('click', async function () {
     return;
   }
 
-  // VALIDASI: cek apakah ruangan ada di ROOMS
+  // VALIDASI KETAT: cek apakah ruangan ada di ROOMS
   if (room !== ADMIN_ROOM && !ROOMS[room]) {
+    console.error('Ruangan tidak ditemukan di ROOMS:', room);
     loginError.textContent = 'Ruangan tidak ditemukan. Silakan pilih ruangan yang valid.';
     loginError.classList.remove('hidden');
     return;
   }
 
+  // Cek password untuk admin
+  if (room === ADMIN_ROOM) {
+    // Password admin (sesuaikan dengan backend)
+    const result = await callApi({ action: 'login', room: room, password: password });
+    if (result.success) {
+      currentRoom = room;
+      sessionStorage.setItem('activeRoom', room);
+      passwordInput.value = '';
+      loginError.classList.add('hidden');
+      showFormScreen();
+    } else {
+      loginError.textContent = result.message || 'Password admin salah.';
+      loginError.classList.remove('hidden');
+    }
+    return;
+  }
+
+  // Login untuk depo biasa
   const result = await callApi({ action: 'login', room: room, password: password });
 
   if (result.success) {
@@ -128,9 +176,10 @@ loginBtn.addEventListener('click', async function () {
     sessionStorage.setItem('activeRoom', room);
     passwordInput.value = '';
     loginError.classList.add('hidden');
+    console.log('Login berhasil:', currentRoom);
     showFormScreen();
   } else {
-    loginError.textContent = result.message || 'Login gagal.';
+    loginError.textContent = result.message || 'Login gagal. Periksa password Anda.';
     loginError.classList.remove('hidden');
   }
 });
@@ -147,14 +196,18 @@ logoutBtn.addEventListener('click', function () {
   logoutBtn.classList.add('hidden');
   activeRoomBadge.classList.add('hidden');
   loginScreen.classList.remove('hidden');
+  console.log('Logout berhasil');
 });
 
 // =========================================================
 // TAMPILKAN LAYAR FORM - DENGAN VALIDASI
 // =========================================================
 async function showFormScreen() {
-  // VALIDASI: cek apakah currentRoom valid
-  if (currentRoom !== ADMIN_ROOM && !ROOMS[currentRoom]) {
+  console.log('showFormScreen - currentRoom:', currentRoom);
+  
+  // VALIDASI KETAT: cek apakah currentRoom valid
+  if (!isValidRoom(currentRoom)) {
+    console.error('showFormScreen: Room tidak valid:', currentRoom);
     sessionStorage.removeItem('activeRoom');
     currentRoom = null;
     loginError.textContent = 'Ruangan tidak ditemukan. Silakan login ulang.';
@@ -193,7 +246,10 @@ async function showFormScreen() {
           console.warn('Room key tidak ditemukan di ROOMS:', roomKey);
         }
       });
-      adminRoomSelect.addEventListener('change', loadRecap);
+      adminRoomSelect.addEventListener('change', function() {
+        console.log('Admin memilih room:', adminRoomSelect.value);
+        loadRecap();
+      });
     }
 
     setActiveTab('recap');
@@ -202,6 +258,7 @@ async function showFormScreen() {
     return;
   }
 
+  // Tampilkan form untuk depo biasa
   tabInputBtn.classList.remove('hidden');
   adminRoomFilterWrap.classList.add('hidden');
   adminTrendPanel.classList.add('hidden');
@@ -290,6 +347,12 @@ function groupLabel(label) {
 }
 
 function renderForm(roomKey) {
+  if (!ROOMS[roomKey]) {
+    console.error('renderForm: Room tidak ditemukan:', roomKey);
+    reportForm.innerHTML = '<p class="error-text">Konfigurasi ruangan tidak ditemukan.</p>';
+    return;
+  }
+  
   reportForm.innerHTML = '';
   const fields = ROOMS[roomKey].fields;
 
@@ -352,14 +415,22 @@ function renderForm(roomKey) {
 // =========================================================
 submitBtn.addEventListener('click', async function () {
   submitMessage.classList.add('hidden');
+  
+  if (!ROOMS[currentRoom]) {
+    submitMessage.textContent = 'Error: Ruangan tidak ditemukan.';
+    submitMessage.className = 'error-text';
+    submitMessage.classList.remove('hidden');
+    return;
+  }
+  
   const fields = ROOMS[currentRoom].fields;
   const data = {};
   let missingRequired = null;
 
   fields.forEach(function (field) {
     const el = document.getElementById('f_' + field.key);
-    data[field.key] = el.value;
-    if ((field.type === 'date' || field.key.indexOf('JADWAL') === 0 || field.key.indexOf('JADWAL') > -1) && !el.value && !missingRequired) {
+    data[field.key] = el ? el.value : '';
+    if ((field.type === 'date' || field.key.indexOf('JADWAL') === 0 || field.key.indexOf('JADWAL') > -1) && !el?.value && !missingRequired) {
       missingRequired = field.label;
     }
   });
@@ -385,6 +456,7 @@ submitBtn.addEventListener('click', async function () {
   }
 });
 
+// Jalankan init
 init();
 
 // =========================================================
@@ -441,10 +513,11 @@ recapMonth.addEventListener('change', loadRecap);
 // =========================================================
 function getTargetRoom() {
   const room = currentRoom === ADMIN_ROOM ? adminRoomSelect.value : currentRoom;
+  console.log('getTargetRoom - room:', room);
   
   // VALIDASI: cek apakah room ada di ROOMS
   if (room && room !== ADMIN_ROOM && !ROOMS[room]) {
-    console.error('Ruangan tidak ditemukan:', room);
+    console.error('getTargetRoom: Ruangan tidak ditemukan:', room);
     return null;
   }
   
@@ -453,6 +526,8 @@ function getTargetRoom() {
 
 async function loadRecap() {
   const room = getTargetRoom();
+  console.log('loadRecap - room:', room);
+  
   if (!room) {
     statCards.innerHTML = '<p class="error-text">Ruangan tidak ditemukan. Silakan pilih ruangan yang valid.</p>';
     barChart.innerHTML = '';
@@ -477,7 +552,7 @@ async function loadRecap() {
 
   // VALIDASI: cek apakah room valid sebelum mengakses fields
   if (!ROOMS[room]) {
-    statCards.innerHTML = '<p class="error-text">Konfigurasi ruangan tidak ditemukan.</p>';
+    statCards.innerHTML = '<p class="error-text">Konfigurasi ruangan tidak ditemukan untuk: ' + room + '</p>';
     return;
   }
 
@@ -570,12 +645,16 @@ async function loadTrend() {
 function renderTrendLegend() {
   lineChartLegend.innerHTML = '';
   RECAP_ROOM_LIST.forEach(function (roomKey) {
+    if (!ROOMS[roomKey]) {
+      console.warn('renderTrendLegend: Room tidak ditemukan:', roomKey);
+      return;
+    }
     const item = document.createElement('div');
     item.className = 'legend-item';
 
     const dot = document.createElement('span');
     dot.className = 'legend-dot';
-    dot.style.background = ROOM_COLORS[roomKey];
+    dot.style.background = ROOM_COLORS[roomKey] || '#CCCCCC';
 
     const label = document.createElement('span');
     label.textContent = ROOMS[roomKey].label;
@@ -619,8 +698,9 @@ function renderTrendChart(data) {
   });
 
   RECAP_ROOM_LIST.forEach(function (roomKey) {
+    if (!ROOMS[roomKey]) return;
     const values = data[roomKey] || new Array(12).fill(0);
-    const color = ROOM_COLORS[roomKey];
+    const color = ROOM_COLORS[roomKey] || '#CCCCCC';
 
     let points = '';
     values.forEach(function (v, i) {
@@ -644,6 +724,11 @@ function renderTrendChart(data) {
 // KELENGKAPAN LAPORAN PER TANGGAL
 // =========================================================
 async function loadDailyStatus(room) {
+  if (!ROOMS[room]) {
+    dailyCalendar.innerHTML = '<p class="error-text">Konfigurasi ruangan tidak ditemukan.</p>';
+    return;
+  }
+  
   dailyRoomLabel.textContent = ROOMS[room].label;
 
   const bulan = recapMonth.value;
@@ -724,6 +809,11 @@ function closeReportModal() {
 }
 
 async function openDayReports(room, day, bulanNum, tahun) {
+  if (!ROOMS[room]) {
+    alert('Konfigurasi ruangan tidak ditemukan.');
+    return;
+  }
+  
   modalTitle.textContent = ROOMS[room].label + ' - ' + day + ' ' + MONTHS_ID[bulanNum - 1] + ' ' + tahun;
   modalBody.innerHTML = '<p class="card-subtitle">Memuat...</p>';
   reportModalOverlay.classList.remove('hidden');
@@ -789,14 +879,12 @@ async function openDayReports(room, day, bulanNum, tahun) {
     block.appendChild(table);
     modalBody.appendChild(block);
     
-    // Simpan data report pertama untuk edit
     if (idx === 0) {
       editingReportData = rep;
       editingReportId = rep._id || rep.id || Date.now().toString();
     }
   });
   
-  // Tampilkan tombol edit/delete
   modalActions.classList.remove('hidden');
 }
 
@@ -807,6 +895,11 @@ exportExcelBtn.addEventListener('click', async function() {
   const room = getTargetRoom();
   if (!room) {
     alert('Ruangan tidak ditemukan.');
+    return;
+  }
+  
+  if (!ROOMS[room]) {
+    alert('Konfigurasi ruangan tidak ditemukan.');
     return;
   }
   
@@ -878,12 +971,17 @@ printPreviewBtn.addEventListener('click', function() {
 // EDIT LAPORAN
 // =========================================================
 editReportBtn.addEventListener('click', function() {
-  const modalBody = document.getElementById('modalBody');
-  const modalActions = document.getElementById('modalActions');
+  if (!ROOMS[editingRoom]) {
+    alert('Konfigurasi ruangan tidak ditemukan.');
+    return;
+  }
+  
+  const modalBodyEl = document.getElementById('modalBody');
+  const modalActionsEl = document.getElementById('modalActions');
   const editContainer = document.getElementById('editFormContainer');
   
-  modalBody.classList.add('hidden');
-  modalActions.classList.add('hidden');
+  modalBodyEl.classList.add('hidden');
+  modalActionsEl.classList.add('hidden');
   editContainer.classList.remove('hidden');
   
   const fields = ROOMS[editingRoom].fields;
@@ -1034,6 +1132,11 @@ saveEditBtn.addEventListener('click', async function() {
     return;
   }
   
+  if (!ROOMS[editingRoom]) {
+    alert('Konfigurasi ruangan tidak ditemukan.');
+    return;
+  }
+  
   const fields = ROOMS[editingRoom].fields;
   const data = {};
   let missingRequired = null;
@@ -1090,4 +1193,16 @@ deleteReportBtn.addEventListener('click', async function() {
   } else {
     alert('Gagal hapus: ' + (result.message || 'Terjadi kesalahan.'));
   }
+});
+
+// =========================================================
+// DEBUG: Tampilkan ROOMS di console untuk pengecekan
+// =========================================================
+console.log('=== ROOMS CONFIG ===');
+console.log(ROOMS);
+console.log('=== RECAP_ROOM_LIST ===');
+console.log(RECAP_ROOM_LIST);
+console.log('=== Validasi RECAP_ROOM_LIST ===');
+RECAP_ROOM_LIST.forEach(function(room) {
+  console.log(room + ' ada di ROOMS?', ROOMS.hasOwnProperty(room));
 });
