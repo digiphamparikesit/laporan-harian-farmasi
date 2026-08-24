@@ -38,14 +38,25 @@ const trendYearLabel = document.getElementById('trendYearLabel');
 const lineChart = document.getElementById('lineChart');
 const lineChartLegend = document.getElementById('lineChartLegend');
 
+// Elemen Modal (dari HTML)
+const reportModalOverlay = document.getElementById('reportModalOverlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+const modalCloseBtn = document.getElementById('modalCloseBtn');
+const modalActions = document.getElementById('modalActions');
+const editReportBtn = document.getElementById('editReportBtn');
+const deleteReportBtn = document.getElementById('deleteReportBtn');
+const editFormContainer = document.getElementById('editFormContainer');
+const editReportForm = document.getElementById('editReportForm');
+const saveEditBtn = document.getElementById('saveEditBtn');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
+
 // =========================================================
 // HELPER
 // =========================================================
 function showLoading(isLoading) {
   const overlay = document.getElementById('loadingOverlay');
-  if (overlay) {
-    overlay.classList.toggle('hidden', !isLoading);
-  }
+  if (overlay) overlay.classList.toggle('hidden', !isLoading);
 }
 
 async function callApi(payload) {
@@ -222,8 +233,18 @@ async function loadDailyCalendar(room, bulan, tahun) {
     dailyCalendar.innerHTML = '';
     for (let day = 1; day <= result.daysInMonth; day++) {
       const cell = document.createElement('div');
-      cell.className = 'day-cell' + (result.data[day] > 0 ? ' has-report' : ' missing');
+      const hasReport = result.data[day] > 0;
+      cell.className = 'day-cell' + (hasReport ? ' has-report' : ' missing');
       cell.textContent = day;
+      
+      // Jika ada laporan, tambahkan event click untuk melihat detail
+      if (hasReport) {
+        cell.style.cursor = 'pointer';
+        cell.addEventListener('click', function() {
+          showDayReports(room, day, bulan, tahun);
+        });
+      }
+      
       dailyCalendar.appendChild(cell);
     }
   }
@@ -261,6 +282,164 @@ async function loadRecapData(tahun, bulan) {
       }
     }
   }
+}
+
+// =========================================================
+// MODAL DETAIL & EDIT LAPORAN
+// =========================================================
+async function showDayReports(room, tanggal, bulan, tahun) {
+  const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
+  if (!result.success) {
+    alert('Gagal memuat data: ' + result.message);
+    return;
+  }
+
+  // Tampilkan modal
+  reportModalOverlay.classList.remove('hidden');
+  modalTitle.textContent = `Laporan Tanggal ${tanggal}/${bulan}/${tahun}`;
+  modalBody.innerHTML = '';
+  modalActions.classList.add('hidden');
+  editFormContainer.classList.add('hidden');
+  
+  if (result.reports.length === 0) {
+    modalBody.innerHTML = '<p>Tidak ada laporan untuk tanggal ini.</p>';
+    return;
+  }
+
+  // Daftar laporan
+  result.reports.forEach((report, index) => {
+    const reportDiv = document.createElement('div');
+    reportDiv.className = 'report-item';
+    reportDiv.innerHTML = `
+      <div><strong>Shift: ${report.shift || '-'}</strong></div>
+      <pre>${JSON.stringify(report, null, 2)}</pre>
+    `;
+    
+    // Tombol edit untuk setiap laporan
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit Laporan Ini';
+    editBtn.className = 'btn-warning';
+    editBtn.style.marginTop = '10px';
+    editBtn.addEventListener('click', function() {
+      openEditModal(report);
+    });
+    
+    reportDiv.appendChild(editBtn);
+    modalBody.appendChild(reportDiv);
+  });
+}
+
+function openEditModal(report) {
+  // Sembunyikan daftar, tampilkan form edit
+  modalBody.classList.add('hidden');
+  modalActions.classList.add('hidden');
+  editFormContainer.classList.remove('hidden');
+
+  // Simpan data yang sedang diedit
+  editingReportData = report;
+  editingRoom = currentRoom; // atau room yang sesuai
+  editingReportId = report._row; // baris spreadsheet
+
+  // Render form edit sesuai field ruangan
+  editReportForm.innerHTML = '';
+  const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect.value];
+  if (!room) return;
+
+  room.fields.forEach(field => {
+    const label = document.createElement('label');
+    label.className = 'field-label';
+    label.textContent = field.label;
+    editReportForm.appendChild(label);
+
+    let input;
+    if (field.type === 'select') {
+      input = document.createElement('select');
+      input.className = 'input';
+      input.name = field.key;
+      field.options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        input.appendChild(option);
+      });
+      // Set nilai saat ini
+      input.value = report[field.key] || '';
+    } else if (field.type === 'textarea') {
+      input = document.createElement('textarea');
+      input.className = 'input';
+      input.name = field.key;
+      input.value = report[field.key] || '';
+    } else if (field.type === 'date') {
+      input = document.createElement('input');
+      input.className = 'input';
+      input.type = 'date';
+      input.name = field.key;
+      input.value = report[field.key] || '';
+    } else if (field.type === 'staff') {
+      input = document.createElement('select');
+      input.className = 'input';
+      input.name = field.key;
+      input.innerHTML = '<option value="">-- Pilih Staff --</option>';
+      staffList.forEach(staff => {
+        const option = document.createElement('option');
+        option.value = staff.nama;
+        option.textContent = staff.nama;
+        input.appendChild(option);
+      });
+      input.value = report[field.key] || '';
+    } else {
+      input = document.createElement('input');
+      input.className = 'input';
+      input.type = 'number';
+      input.name = field.key;
+      input.value = report[field.key] || '';
+    }
+
+    editReportForm.appendChild(input);
+  });
+
+  // Tambahkan tombol simpan/batal (sudah ada di HTML, tapi kita pastikan event-nya)
+  saveEditBtn.addEventListener('click', saveEditedReport);
+  cancelEditBtn.addEventListener('click', closeEditModal);
+}
+
+async function saveEditedReport() {
+  if (!editingReportData || !editingRoom) return;
+  
+  // Ambil data dari form
+  const formData = new FormData(editReportForm);
+  const data = {};
+  formData.forEach((value, key) => {
+    data[key] = value;
+  });
+
+  // Panggil API update
+  const result = await callApi({ 
+    action: 'updateReport', 
+    room: editingRoom, 
+    row: editingReportId, 
+    data: data,
+    checkTanggal: editingReportData.tanggal // untuk validasi konflik
+  });
+
+  if (result.success) {
+    alert('Laporan berhasil diperbarui!');
+    closeEditModal();
+    // Reload data
+    const tahun = recapYear.value;
+    const bulan = recapMonth.value;
+    showRecapScreen();
+  } else {
+    alert('Gagal memperbarui: ' + result.message);
+  }
+}
+
+function closeEditModal() {
+  reportModalOverlay.classList.add('hidden');
+  modalBody.classList.remove('hidden');
+  editFormContainer.classList.add('hidden');
+  editingReportId = null;
+  editingReportData = null;
 }
 
 // =========================================================
@@ -438,9 +617,21 @@ tabRecapBtn.addEventListener('click', function () {
   showRecapScreen();
 });
 
+// Tambahkan event listener untuk filter rekap
+if (recapYear) recapYear.addEventListener('change', function() { showRecapScreen(); });
+if (recapMonth) recapMonth.addEventListener('change', function() { showRecapScreen(); });
+if (adminRoomSelect) adminRoomSelect.addEventListener('change', function() { showRecapScreen(); });
+
 // Tambahkan event listener untuk export & print
 if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportToExcel);
 if (printPreviewBtn) printPreviewBtn.addEventListener('click', printPreview);
+
+// Event listener untuk modal
+if (modalCloseBtn) modalCloseBtn.addEventListener('click', function() {
+  reportModalOverlay.classList.add('hidden');
+  modalBody.classList.remove('hidden');
+  editFormContainer.classList.add('hidden');
+});
 
 // =========================================================
 // INIT
