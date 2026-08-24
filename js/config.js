@@ -8,7 +8,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-
 // ROOM ADMIN (untuk melihat semua laporan)
 const ADMIN_ROOM = 'admin';
 
-// Daftar ruangan yang akan ditampilkan di rekap (khusus admin)
+// DAFTAR RUANGAN UNTUK REKAP - PASTIKAN SAMA PERSIS DENGAN KEY DI ROOMS
 const RECAP_ROOM_LIST = [
   'depo_igd',
   'depo_ibs',
@@ -20,7 +20,7 @@ const RECAP_ROOM_LIST = [
   'depo_onkologi_terpadu'
 ];
 
-// Warna untuk grafik tren
+// WARNA GRAFIK
 const ROOM_COLORS = {
   depo_igd: '#0F6E6A',
   depo_ibs: '#D97706',
@@ -32,7 +32,7 @@ const ROOM_COLORS = {
   depo_onkologi_terpadu: '#EA580C'
 };
 
-// Nama bulan
+// NAMA BULAN
 const MONTHS_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const MONTHS_ID_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
@@ -40,6 +40,7 @@ const MONTHS_ID_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
 
 // =========================================================
 // KONFIGURASI RUANGAN (DEPO FARMASI)
+// PASTIKAN KEY SAMA PERSIS DENGAN RECAP_ROOM_LIST
 // =========================================================
 const ROOMS = {
   // DEPO FARMASI IGD
@@ -195,3 +196,22 @@ const ROOMS = {
     ]
   }
 };
+
+// =========================================================
+// FUNGSI VALIDASI RUANGAN
+// =========================================================
+function isValidRoom(roomKey) {
+  if (!roomKey) return false;
+  if (roomKey === ADMIN_ROOM) return true;
+  return ROOMS.hasOwnProperty(roomKey);
+}
+
+function getRoomLabel(roomKey) {
+  if (roomKey === ADMIN_ROOM) return 'ADMIN';
+  return ROOMS[roomKey] ? ROOMS[roomKey].label : 'Unknown';
+}
+
+function getRoomFields(roomKey) {
+  if (roomKey === ADMIN_ROOM) return [];
+  return ROOMS[roomKey] ? ROOMS[roomKey].fields : [];
+}
