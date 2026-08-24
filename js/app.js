@@ -24,6 +24,20 @@ const recapScreen = document.getElementById('recapScreen');
 // ... (dan elemen lainnya jika ada)
 
 // =========================================================
+// HELPER: Tampilkan / Sembunyikan Loading Overlay
+// =========================================================
+function showLoading(isLoading) {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    if (isLoading) {
+      overlay.classList.remove('hidden');
+    } else {
+      overlay.classList.add('hidden');
+    }
+  }
+}
+
+// =========================================================
 // HELPER: panggil Apps Script
 // =========================================================
 async function callApi(payload) {
