@@ -3,18 +3,9 @@
 // =========================================================
 let staffList = [];
 let currentRoom = null;
-
-// State mode edit laporan: diisi saat user klik tombol "Edit" pada
-// pop-up detail laporan (openDayReports). editingReportRow = nomor baris
-// asli di sheet (dari field _row hasil getDayReports_/getMonthlyReports_).
-// editingCheckTanggal = tanggal yang tercatat di baris tsb saat dibuka,
-// dipakai backend sebagai pengaman sebelum menimpa baris.
-let editingReportRow = null;
-let editingCheckTanggal = null;
-
-// Data laporan rekap 1 bulan terakhir yang dimuat untuk modal export
-// (dipakai ulang oleh tombol Export Excel tanpa perlu fetch ulang).
-let lastExportData = null;
+let editingReportId = null;
+let editingRoom = null;
+let editingReportData = null;
 
 const loginScreen = document.getElementById('loginScreen');
 const formScreen = document.getElementById('formScreen');
@@ -29,10 +20,6 @@ const submitMessage = document.getElementById('submitMessage');
 const logoutBtn = document.getElementById('logoutBtn');
 const activeRoomBadge = document.getElementById('activeRoomBadge');
 const loadingOverlay = document.getElementById('loadingOverlay');
-
-const editBanner = document.getElementById('editBanner');
-const editBannerDate = document.getElementById('editBannerDate');
-const cancelEditBtn = document.getElementById('cancelEditBtn');
 
 const tabNav = document.getElementById('tabNav');
 const tabInputBtn = document.getElementById('tabInputBtn');
@@ -55,17 +42,18 @@ const reportModalOverlay = document.getElementById('reportModalOverlay');
 const modalTitle = document.getElementById('modalTitle');
 const modalBody = document.getElementById('modalBody');
 const modalCloseBtn = document.getElementById('modalCloseBtn');
-
-const exportOpenBtn = document.getElementById('exportOpenBtn');
-const exportModalOverlay = document.getElementById('exportModalOverlay');
-const exportModalTitle = document.getElementById('exportModalTitle');
-const exportTableWrap = document.getElementById('exportTableWrap');
+const modalActions = document.getElementById('modalActions');
+const editFormContainer = document.getElementById('editFormContainer');
+const editReportForm = document.getElementById('editReportForm');
+const saveEditBtn = document.getElementById('saveEditBtn');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
+const editReportBtn = document.getElementById('editReportBtn');
+const deleteReportBtn = document.getElementById('deleteReportBtn');
 const exportExcelBtn = document.getElementById('exportExcelBtn');
-const exportPrintBtn = document.getElementById('exportPrintBtn');
-const exportCloseBtn = document.getElementById('exportCloseBtn');
+const printPreviewBtn = document.getElementById('printPreviewBtn');
 
 // =========================================================
-// HELPER: panggil Apps Script (pakai text/plain agar tak kena preflight CORS)
+// HELPER: panggil Apps Script
 // =========================================================
 async function callApi(payload) {
   showLoading(true);
@@ -85,10 +73,6 @@ async function callApi(payload) {
 
 function showLoading(state) {
   loadingOverlay.classList.toggle('hidden', !state);
-}
-
-function escapeHtml_(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // =========================================================
@@ -147,7 +131,6 @@ loginBtn.addEventListener('click', async function () {
 logoutBtn.addEventListener('click', function () {
   sessionStorage.removeItem('activeRoom');
   currentRoom = null;
-  stopEditMode();
   formScreen.classList.add('hidden');
   recapScreen.classList.add('hidden');
   tabNav.classList.add('hidden');
@@ -163,10 +146,6 @@ logoutBtn.addEventListener('click', function () {
 // TAMPILKAN LAYAR FORM
 // =========================================================
 async function showFormScreen() {
-  // Pengaman: kalau sesi tersimpan (dari login sebelumnya) sudah tidak
-  // valid lagi -- misalnya nama ruangan pernah diganti/dihapus -- jangan
-  // lanjut (nanti error diam-diam / layar kosong), tapi paksa logout dan
-  // kasih pesan jelas ke user supaya login ulang.
   if (currentRoom !== ADMIN_ROOM && !ROOMS[currentRoom]) {
     sessionStorage.removeItem('activeRoom');
     currentRoom = null;
@@ -228,7 +207,7 @@ async function showFormScreen() {
 }
 
 // =========================================================
-// RENDER FORM DINAMIS SESUAI KONFIGURASI RUANGAN
+// RENDER FORM DINAMIS
 // =========================================================
 function buildFieldGroup(field) {
   const wrapper = document.createElement('div');
@@ -293,15 +272,10 @@ function buildFieldGroup(field) {
   return wrapper;
 }
 
-// Ambil nama grup dari label dengan menghapus angka urut di belakang
-// contoh: "Petugas Pagi 1" -> "Petugas Pagi", "Petugas 1" -> "Petugas"
 function groupLabel(label) {
   return label.replace(/\s+\d+$/, '').trim();
 }
 
-// Kolom KIRI: tanggal, jadwal shift (langsung), lalu field petugas
-//   dikelompokkan jadi grid 2 kolom per sub-grup (mis. Pagi / Midel).
-// Kolom KANAN: semua field angka/jumlah, disusun grid otomatis.
 function renderForm(roomKey) {
   reportForm.innerHTML = '';
   const fields = ROOMS[roomKey].fields;
@@ -361,7 +335,7 @@ function renderForm(roomKey) {
 }
 
 // =========================================================
-// SUBMIT LAPORAN (mendukung mode Simpan Baru & mode Edit/Update)
+// SUBMIT LAPORAN
 // =========================================================
 submitBtn.addEventListener('click', async function () {
   submitMessage.classList.add('hidden');
@@ -372,7 +346,6 @@ submitBtn.addEventListener('click', async function () {
   fields.forEach(function (field) {
     const el = document.getElementById('f_' + field.key);
     data[field.key] = el.value;
-    // Tanggal & Jadwal Shift wajib diisi
     if ((field.type === 'date' || field.key.indexOf('JADWAL') === 0 || field.key.indexOf('JADWAL') > -1) && !el.value && !missingRequired) {
       missingRequired = field.label;
     }
@@ -381,84 +354,28 @@ submitBtn.addEventListener('click', async function () {
   if (missingRequired) {
     submitMessage.textContent = 'Mohon lengkapi: ' + missingRequired;
     submitMessage.className = 'error-text';
+    submitMessage.classList.remove('hidden');
     return;
   }
 
-  const payload = editingReportRow
-    ? { action: 'updateReport', room: currentRoom, row: editingReportRow, data: data, checkTanggal: editingCheckTanggal }
-    : { action: 'submitReport', room: currentRoom, data: data };
-
-  const result = await callApi(payload);
+  const result = await callApi({ action: 'submitReport', room: currentRoom, data: data });
 
   if (result.success) {
-    submitMessage.textContent = editingReportRow ? 'Laporan berhasil diperbarui.' : 'Laporan berhasil disimpan.';
+    submitMessage.textContent = 'Laporan berhasil disimpan.';
     submitMessage.className = 'success-text';
-    stopEditMode();
-    renderForm(currentRoom); // reset form
+    submitMessage.classList.remove('hidden');
+    renderForm(currentRoom);
   } else {
-    submitMessage.textContent = result.message || (editingReportRow ? 'Gagal memperbarui laporan.' : 'Gagal menyimpan laporan.');
+    submitMessage.textContent = result.message || 'Gagal menyimpan laporan.';
     submitMessage.className = 'error-text';
+    submitMessage.classList.remove('hidden');
   }
-});
-
-// =========================================================
-// MODE EDIT LAPORAN
-// Dipanggil dari tombol "Edit" pada pop-up detail laporan (openDayReports).
-// Form input yang sudah ada dipakai ulang (bukan bikin layar baru): field
-// diisi otomatis dari data laporan yang diklik, lalu tombol submit
-// berubah jadi "Update Laporan" dan mengirim action 'updateReport'
-// beserta nomor baris aslinya supaya tidak menimpa baris/laporan lain.
-// =========================================================
-function startEditReport(room, rep) {
-  if (currentRoom !== room) {
-    alert('Untuk mengedit laporan ini, login sebagai ruangan "' + ROOMS[room].label + '" terlebih dahulu.');
-    return;
-  }
-  closeReportModal();
-  exportModalOverlay.classList.add('hidden');
-
-  editingReportRow = rep._row;
-  const dateKey = ROOMS[room].fields[0].key; // kolom pertama selalu tanggal
-  editingCheckTanggal = rep[dateKey];
-
-  setActiveTab('input');
-  renderForm(room);
-
-  ROOMS[room].fields.forEach(function (f) {
-    const el = document.getElementById('f_' + f.key);
-    if (!el) return;
-    let val = rep[f.key];
-    if (val === undefined || val === null) val = '';
-    if (f.type === 'date' && val) {
-      const parts = String(val).split('/'); // dd/MM/yyyy -> yyyy-MM-dd (format input type=date)
-      if (parts.length === 3) val = parts[2] + '-' + parts[1] + '-' + parts[0];
-    }
-    el.value = val;
-  });
-
-  submitBtn.textContent = 'Update Laporan';
-  editBannerDate.textContent = editingCheckTanggal;
-  editBanner.classList.remove('hidden');
-  formScreen.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function stopEditMode() {
-  editingReportRow = null;
-  editingCheckTanggal = null;
-  submitBtn.textContent = 'Simpan Laporan';
-  editBanner.classList.add('hidden');
-}
-
-cancelEditBtn.addEventListener('click', function () {
-  stopEditMode();
-  submitMessage.classList.add('hidden');
-  renderForm(currentRoom);
 });
 
 init();
 
 // =========================================================
-// TAB NAVIGASI (Input Laporan <-> Rekap Laporan)
+// TAB NAVIGASI
 // =========================================================
 function setActiveTab(tab) {
   if (tab === 'input') {
@@ -497,7 +414,7 @@ function initRecapFilters() {
 
   MONTHS_ID.forEach(function (m, idx) {
     const opt = document.createElement('option');
-    opt.value = idx + 1; // 1 = Januari ... 12 = Desember
+    opt.value = idx + 1;
     opt.textContent = m;
     recapMonth.appendChild(opt);
   });
@@ -507,8 +424,7 @@ recapYear.addEventListener('change', loadRecap);
 recapMonth.addEventListener('change', loadRecap);
 
 // =========================================================
-// AMBIL DATA REKAP & RENDER KARTU + GRAFIK
-// (mengikuti ruangan yang login, atau ruangan yang dipilih ADMIN)
+// AMBIL DATA REKAP
 // =========================================================
 function getTargetRoom() {
   return currentRoom === ADMIN_ROOM ? adminRoomSelect.value : currentRoom;
@@ -601,7 +517,7 @@ function renderBarChart(fields, data) {
 }
 
 // =========================================================
-// GRAFIK TREN SEMUA UNIT (khusus ADMIN) - grafik garis per bulan
+// GRAFIK TREN (ADMIN)
 // =========================================================
 async function loadTrend() {
   const tahun = recapYear.value;
@@ -653,13 +569,12 @@ function renderTrendChart(data) {
     (data[roomKey] || []).forEach(function (v) { if (v > maxValue) maxValue = v; });
   });
 
-  const xStep = innerW / 11; // 12 titik bulan (index 0-11)
+  const xStep = innerW / 11;
   const xAt = function (i) { return padLeft + i * xStep; };
   const yAt = function (v) { return padTop + innerH - (v / maxValue) * innerH; };
 
   let svg = '<svg viewBox="0 0 ' + width + ' ' + height + '" class="trend-svg" xmlns="http://www.w3.org/2000/svg">';
 
-  // Garis bantu horizontal + label sumbu Y
   [0, 0.25, 0.5, 0.75, 1].forEach(function (t) {
     const y = padTop + innerH - t * innerH;
     const val = Math.round(maxValue * t);
@@ -667,12 +582,10 @@ function renderTrendChart(data) {
     svg += '<text x="' + (padLeft - 8) + '" y="' + (y + 4) + '" class="trend-axis-label" text-anchor="end">' + val.toLocaleString('id-ID') + '</text>';
   });
 
-  // Label sumbu X (nama bulan singkat)
   MONTHS_ID_SHORT.forEach(function (m, i) {
     svg += '<text x="' + xAt(i) + '" y="' + (height - 10) + '" class="trend-axis-label" text-anchor="middle">' + m + '</text>';
   });
 
-  // Garis tiap ruangan + titik data
   RECAP_ROOM_LIST.forEach(function (roomKey) {
     const values = data[roomKey] || new Array(12).fill(0);
     const color = ROOM_COLORS[roomKey];
@@ -696,7 +609,7 @@ function renderTrendChart(data) {
 }
 
 // =========================================================
-// KELENGKAPAN LAPORAN PER TANGGAL (cek tanggal yang belum ada laporan)
+// KELENGKAPAN LAPORAN PER TANGGAL
 // =========================================================
 async function loadDailyStatus(room) {
   dailyRoomLabel.textContent = ROOMS[room].label;
@@ -761,7 +674,7 @@ function renderDailyCalendar(daysInMonth, counts, tahun, bulanNum, room) {
 }
 
 // =========================================================
-// POP-UP DETAIL ISI LAPORAN PADA SATU TANGGAL
+// POP-UP DETAIL LAPORAN
 // =========================================================
 modalCloseBtn.addEventListener('click', closeReportModal);
 reportModalOverlay.addEventListener('click', function (e) {
@@ -770,13 +683,25 @@ reportModalOverlay.addEventListener('click', function (e) {
 
 function closeReportModal() {
   reportModalOverlay.classList.add('hidden');
+  // Reset edit state
+  editFormContainer.classList.add('hidden');
+  modalActions.classList.add('hidden');
+  modalBody.classList.remove('hidden');
+  editingReportId = null;
+  editingRoom = null;
+  editingReportData = null;
 }
 
 async function openDayReports(room, day, bulanNum, tahun) {
   modalTitle.textContent = ROOMS[room].label + ' - ' + day + ' ' + MONTHS_ID[bulanNum - 1] + ' ' + tahun;
   modalBody.innerHTML = '<p class="card-subtitle">Memuat...</p>';
   reportModalOverlay.classList.remove('hidden');
-
+  
+  // Hide edit form initially
+  editFormContainer.classList.add('hidden');
+  modalActions.classList.add('hidden');
+  modalBody.classList.remove('hidden');
+  
   const result = await callApi({
     action: 'getDayReports',
     room: room,
@@ -795,172 +720,355 @@ async function openDayReports(room, day, bulanNum, tahun) {
     return;
   }
 
+  // Store room and reports for editing
+  editingRoom = room;
+  
   modalBody.innerHTML = '';
-  result.reports.forEach(function (rep, idx) {
+  result.reports.forEach(function(rep, idx) {
     const block = document.createElement('div');
     block.className = 'modal-report-block';
-
-    // Heading + tombol Edit. Tombol ini membawa user ke tab Input Laporan
-    // dengan form sudah terisi otomatis dari laporan yang dipilih, supaya
-    // salah input / laporan dobel bisa langsung dibetulkan tanpa harus
-    // hapus-tambah manual di sheet.
+    
     const heading = document.createElement('div');
     heading.className = 'modal-report-heading';
-
-    const headingText = document.createElement('span');
-    headingText.textContent = 'Laporan ke-' + (idx + 1) + ' dari ' + result.reports.length;
-    heading.appendChild(headingText);
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn-edit-report';
-    editBtn.textContent = '✏️ Edit';
-    editBtn.addEventListener('click', function () { startEditReport(room, rep); });
-    heading.appendChild(editBtn);
-
+    heading.textContent = 'Laporan ke-' + (idx + 1) + ' dari ' + result.reports.length;
     block.appendChild(heading);
-
+    
     const table = document.createElement('div');
     table.className = 'modal-report-table';
-
-    ROOMS[room].fields.forEach(function (f) {
+    
+    ROOMS[room].fields.forEach(function(f) {
       const val = rep[f.key];
       if (val === undefined || val === null || val === '') return;
-
+      
       const row = document.createElement('div');
       row.className = 'modal-report-row';
-
+      
       const label = document.createElement('span');
       label.className = 'modal-report-label';
       label.textContent = f.label;
-
+      
       const value = document.createElement('span');
       value.className = 'modal-report-value';
       value.textContent = val;
-
+      
       row.appendChild(label);
       row.appendChild(value);
       table.appendChild(row);
     });
-
+    
     block.appendChild(table);
     modalBody.appendChild(block);
+    
+    // Store first report data for editing
+    if (idx === 0) {
+      editingReportData = rep;
+      editingReportId = rep._id || rep.id || Date.now().toString();
+    }
   });
+  
+  // Show edit/delete buttons
+  modalActions.classList.remove('hidden');
 }
 
 // =========================================================
-// REKAP DATA PELAYANAN: EXPORT EXCEL & PREVIEW CETAK
-// Menampilkan semua laporan 1 bulan (per tanggal & shift, semua kolom)
-// dalam sebuah tabel, dengan baris Total di akhir untuk tiap kolom angka.
+// EXPORT EXCEL (CSV dengan Total)
 // =========================================================
-exportOpenBtn.addEventListener('click', openExportPreview);
-exportCloseBtn.addEventListener('click', function () { exportModalOverlay.classList.add('hidden'); });
-exportModalOverlay.addEventListener('click', function (e) {
-  if (e.target === exportModalOverlay) exportModalOverlay.classList.add('hidden');
-});
-
-async function openExportPreview() {
+exportExcelBtn.addEventListener('click', async function() {
   const room = getTargetRoom();
   if (!room) return;
-  if (!recapMonth.value) {
-    alert('Pilih Bulan tertentu (bukan "Semua Bulan") di filter atas untuk melihat laporan rekap.');
-    return;
-  }
-
+  
+  const bulan = recapMonth.value;
+  const tahun = recapYear.value;
+  
   const result = await callApi({
-    action: 'getMonthlyReports',
+    action: 'getFullReport',
     room: room,
-    bulan: recapMonth.value,
-    tahun: recapYear.value
+    tahun: tahun,
+    bulan: bulan
   });
-
+  
   if (!result.success) {
-    alert(result.message || 'Gagal memuat laporan rekap.');
+    alert('Gagal mengambil data: ' + result.message);
     return;
   }
-
+  
   const fields = ROOMS[room].fields;
-  const monthLabel = MONTHS_ID[Number(recapMonth.value) - 1];
-  exportModalTitle.textContent = 'Rekap ' + ROOMS[room].label + ' - ' + monthLabel + ' ' + recapYear.value;
-
-  lastExportData = {
-    room: room, label: ROOMS[room].label, monthLabel: monthLabel,
-    tahun: recapYear.value, fields: fields, reports: result.reports
-  };
-
-  renderExportTable(fields, result.reports);
-  exportModalOverlay.classList.remove('hidden');
-}
-
-function renderExportTable(fields, reports) {
+  
+  // Headers: Tanggal, Shift, then all fields
+  const headers = ['Tanggal', 'Shift', ...fields.map(f => f.label)];
+  
+  // Build rows
+  const rows = [];
   const totals = {};
-  fields.forEach(function (f) { if (f.type === 'number') totals[f.key] = 0; });
-
-  let html = '<table class="export-table"><thead><tr>';
-  fields.forEach(function (f) { html += '<th>' + f.label + '</th>'; });
-  html += '</tr></thead><tbody>';
-
-  if (reports.length === 0) {
-    html += '<tr><td colspan="' + fields.length + '" class="export-empty">Tidak ada laporan pada bulan ini.</td></tr>';
-  }
-
-  reports.forEach(function (rep) {
-    html += '<tr>';
-    fields.forEach(function (f) {
-      const val = (rep[f.key] !== undefined && rep[f.key] !== null && rep[f.key] !== '') ? rep[f.key] : '-';
-      if (f.type === 'number') totals[f.key] += Number(rep[f.key]) || 0;
-      html += '<td>' + escapeHtml_(val) + '</td>';
-    });
-    html += '</tr>';
+  fields.forEach(f => totals[f.key] = 0);
+  
+  // Sort by date
+  const sortedData = (result.data || []).sort((a, b) => {
+    return (a.tanggal || '').localeCompare(b.tanggal || '');
   });
-
-  if (reports.length > 0) {
-    html += '<tr class="export-total-row">';
-    fields.forEach(function (f, idx) {
-      if (idx === 0) html += '<td>Total</td>';
-      else if (f.type === 'number') html += '<td>' + totals[f.key].toLocaleString('id-ID') + '</td>';
-      else html += '<td></td>';
+  
+  sortedData.forEach(item => {
+    const row = [];
+    row.push(item.tanggal || '-');
+    row.push(item.shift || '-');
+    fields.forEach(f => {
+      const val = parseFloat(item[f.key]) || 0;
+      row.push(val);
+      totals[f.key] += val;
     });
-    html += '</tr>';
-  }
+    rows.push(row);
+  });
+  
+  // Add totals row
+  const totalRow = ['TOTAL', ''];
+  fields.forEach(f => totalRow.push(totals[f.key]));
+  rows.push(totalRow);
+  
+  // Create CSV content
+  const csvContent = [headers, ...rows]
+    .map(row => row.join(','))
+    .join('\n');
+  
+  // Download with BOM for UTF-8
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const monthLabel = bulan ? MONTHS_ID[bulan - 1] : 'semua';
+  link.href = URL.createObjectURL(blob);
+  link.download = `Laporan_${ROOMS[room].label}_${tahun}_${monthLabel}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+});
 
-  html += '</tbody></table>';
-  exportTableWrap.innerHTML = html;
-}
-
-exportPrintBtn.addEventListener('click', function () {
+// =========================================================
+// PRINT PREVIEW
+// =========================================================
+printPreviewBtn.addEventListener('click', function() {
   window.print();
 });
 
-exportExcelBtn.addEventListener('click', function () {
-  if (!lastExportData || lastExportData.reports.length === 0) {
-    alert('Tidak ada data untuk diexport.');
+// =========================================================
+// EDIT LAPORAN
+// =========================================================
+editReportBtn.addEventListener('click', function() {
+  // Hide detail, show edit form
+  modalBody.classList.add('hidden');
+  modalActions.classList.add('hidden');
+  editFormContainer.classList.remove('hidden');
+  
+  // Populate form with existing data
+  const fields = ROOMS[editingRoom].fields;
+  editReportForm.innerHTML = '';
+  
+  // Build edit form with 2 columns layout
+  const columnsWrap = document.createElement('div');
+  columnsWrap.className = 'form-columns';
+  
+  const leftCol = document.createElement('div');
+  leftCol.className = 'form-col form-col-left';
+  
+  const rightCol = document.createElement('div');
+  rightCol.className = 'form-col form-col-right';
+  
+  // Split fields
+  const metaFields = fields.filter(f => f.type === 'date' || f.type === 'select');
+  const staffFields = fields.filter(f => f.type === 'staff');
+  const otherFields = fields.filter(f => f.type !== 'date' && f.type !== 'select' && f.type !== 'staff');
+  
+  metaFields.forEach(f => {
+    const wrapper = buildEditFieldGroup(f);
+    leftCol.appendChild(wrapper);
+  });
+  
+  // Staff fields
+  if (staffFields.length) {
+    const groups = {};
+    const groupOrder = [];
+    staffFields.forEach(function (f) {
+      const g = groupLabel(f.label);
+      if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
+      groups[g].push(f);
+    });
+    
+    const staffColumns = ROOMS[editingRoom].staffColumns || 2;
+    const staffWrap = document.createElement('div');
+    staffWrap.className = 'staff-section';
+    
+    groupOrder.forEach(function (g) {
+      if (groupOrder.length > 1) {
+        const heading = document.createElement('div');
+        heading.className = 'staff-group-title';
+        heading.textContent = g;
+        staffWrap.appendChild(heading);
+      }
+      const grid = document.createElement('div');
+      grid.className = 'staff-grid';
+      grid.style.gridTemplateColumns = 'repeat(' + staffColumns + ', 1fr)';
+      groups[g].forEach(function (f) { 
+        grid.appendChild(buildEditFieldGroup(f)); 
+      });
+      staffWrap.appendChild(grid);
+    });
+    
+    leftCol.appendChild(staffWrap);
+  }
+  
+  otherFields.forEach(f => {
+    rightCol.appendChild(buildEditFieldGroup(f));
+  });
+  
+  columnsWrap.appendChild(leftCol);
+  columnsWrap.appendChild(rightCol);
+  editReportForm.appendChild(columnsWrap);
+  
+  saveEditBtn.dataset.reportId = editingReportId;
+});
+
+function buildEditFieldGroup(field) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'form-group' + (field.type === 'textarea' ? ' form-group-full' : '');
+  
+  const label = document.createElement('label');
+  label.className = 'field-label';
+  label.textContent = field.label;
+  label.setAttribute('for', 'edit_f_' + field.key);
+  wrapper.appendChild(label);
+  
+  let inputEl;
+  
+  if (field.type === 'date') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'date';
+  } else if (field.type === 'number') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'number';
+    inputEl.min = '0';
+    inputEl.inputMode = 'numeric';
+  } else if (field.type === 'time') {
+    inputEl = document.createElement('input');
+    inputEl.type = 'time';
+  } else if (field.type === 'textarea') {
+    inputEl = document.createElement('textarea');
+    inputEl.rows = 2;
+    inputEl.placeholder = 'Tulis daftar/catatan di sini...';
+  } else if (field.type === 'select') {
+    inputEl = document.createElement('select');
+    const emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.textContent = '-- Pilih --';
+    inputEl.appendChild(emptyOpt);
+    (field.options || []).forEach(function (opt) {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt;
+      inputEl.appendChild(o);
+    });
+  } else if (field.type === 'staff') {
+    inputEl = document.createElement('select');
+    const emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.textContent = '-- Pilih Petugas --';
+    inputEl.appendChild(emptyOpt);
+    staffList.forEach(function (s) {
+      const o = document.createElement('option');
+      o.value = s.nama;
+      o.textContent = s.nama + (s.nip ? ' (' + s.nip + ')' : '');
+      inputEl.appendChild(o);
+    });
+  } else {
+    inputEl = document.createElement('input');
+    inputEl.type = 'text';
+  }
+  
+  inputEl.className = 'input';
+  inputEl.id = 'edit_f_' + field.key;
+  
+  // Set value from editingReportData
+  if (editingReportData && editingReportData[field.key] !== undefined) {
+    inputEl.value = editingReportData[field.key];
+  }
+  
+  wrapper.appendChild(inputEl);
+  return wrapper;
+}
+
+// =========================================================
+// CANCEL EDIT
+// =========================================================
+cancelEditBtn.addEventListener('click', function() {
+  editFormContainer.classList.add('hidden');
+  modalBody.classList.remove('hidden');
+  modalActions.classList.remove('hidden');
+});
+
+// =========================================================
+// SAVE EDIT
+// =========================================================
+saveEditBtn.addEventListener('click', async function() {
+  const reportId = this.dataset.reportId;
+  if (!reportId || !editingRoom) {
+    alert('Error: Data laporan tidak ditemukan.');
     return;
   }
-  const fields = lastExportData.fields;
-  const totals = {};
-  fields.forEach(function (f) { if (f.type === 'number') totals[f.key] = 0; });
-
-  const rows = lastExportData.reports.map(function (rep) {
-    const row = {};
-    fields.forEach(function (f) {
-      const val = (rep[f.key] !== undefined && rep[f.key] !== null) ? rep[f.key] : '';
-      if (f.type === 'number') totals[f.key] += Number(val) || 0;
-      row[f.label] = val;
-    });
-    return row;
+  
+  const fields = ROOMS[editingRoom].fields;
+  const data = {};
+  let missingRequired = null;
+  
+  fields.forEach(f => {
+    const el = document.getElementById('edit_f_' + f.key);
+    if (el) {
+      data[f.key] = el.value;
+      if ((f.type === 'date' || f.key.indexOf('JADWAL') === 0) && !el.value && !missingRequired) {
+        missingRequired = f.label;
+      }
+    }
   });
-
-  const totalRow = {};
-  fields.forEach(function (f, idx) {
-    totalRow[f.label] = idx === 0 ? 'Total' : (f.type === 'number' ? totals[f.key] : '');
+  
+  if (missingRequired) {
+    alert('Mohon lengkapi: ' + missingRequired);
+    return;
+  }
+  
+  const result = await callApi({
+    action: 'updateReport',
+    reportId: reportId,
+    room: editingRoom,
+    data: data
   });
-  rows.push(totalRow);
+  
+  if (result.success) {
+    alert('Laporan berhasil diperbarui!');
+    closeReportModal();
+    loadRecap();
+  } else {
+    alert('Gagal update: ' + (result.message || 'Terjadi kesalahan.'));
+  }
+});
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
-
-  const filename = 'Rekap_' + lastExportData.room.replace(/[^A-Za-z0-9]+/g, '_') + '_' +
-    lastExportData.monthLabel + '_' + lastExportData.tahun + '.xlsx';
-  XLSX.writeFile(wb, filename);
+// =========================================================
+// DELETE LAPORAN
+// =========================================================
+deleteReportBtn.addEventListener('click', async function() {
+  if (!editingReportId || !editingRoom) {
+    alert('Error: Data laporan tidak ditemukan.');
+    return;
+  }
+  
+  if (!confirm('Yakin ingin menghapus laporan ini? Tindakan ini tidak dapat dibatalkan.')) return;
+  
+  const result = await callApi({
+    action: 'deleteReport',
+    reportId: editingReportId,
+    room: editingRoom
+  });
+  
+  if (result.success) {
+    alert('Laporan berhasil dihapus!');
+    closeReportModal();
+    loadRecap();
+  } else {
+    alert('Gagal hapus: ' + (result.message || 'Terjadi kesalahan.'));
+  }
 });
