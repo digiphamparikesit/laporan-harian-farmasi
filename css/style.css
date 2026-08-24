@@ -509,3 +509,13 @@ textarea.input {
 #editFormContainer {
   max-height: calc(85vh - 80px); /* Kurangi tinggi header & footer */
 }
+.modal-card {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-body {
+  overflow-y: auto;
+  flex: 1;
+}
