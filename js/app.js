@@ -294,10 +294,14 @@ async function loadRecapData(tahun, bulan) {
     }
   }
 
-  const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
-  if (trendResult.success) {
-    let datasets = [];
-    if (currentRoom === ADMIN_ROOM) {
+  // GRAFIK NILAI PELAYANAN (BAR CHART) - Sesuai filter tahun & bulan
+  await loadBarChartData(tahun, bulan);
+
+  // GRAFIK TREN SEMUA UNIT (LINE CHART)
+  if (currentRoom === ADMIN_ROOM) {
+    const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
+    if (trendResult.success) {
+      let datasets = [];
       for (const [roomKey, monthlyData] of Object.entries(trendResult.data)) {
         datasets.push({
           label: ROOMS[roomKey]?.label || roomKey,
@@ -305,25 +309,101 @@ async function loadRecapData(tahun, bulan) {
           color: ROOM_COLORS[roomKey] || '#000'
         });
       }
-    } else {
-      const roomKey = currentRoom;
-      datasets.push({
-        label: ROOMS[roomKey]?.label || roomKey,
-        data: trendResult.data[roomKey] || [0,0,0,0,0,0,0,0,0,0,0,0],
-        color: ROOM_COLORS[roomKey] || '#000'
-      });
+      drawLineChart(datasets, MONTHS_ID_SHORT);
     }
-
-    drawLineChart(datasets, MONTHS_ID_SHORT);
   }
 }
 
+// =========================================================
+// GRAFIK BATANG (BAR CHART) - "Grafik Nilai Pelayanan"
+// =========================================================
+async function loadBarChartData(tahun, bulan) {
+  const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
+  if (trendResult.success) {
+    let labels = [];
+    let values = [];
+    let colors = [];
+    
+    // Tentukan index bulan (1-12) -> (0-11). Jika bulan kosong, tampilkan total tahunan
+    let monthIndex = bulan ? (Number(bulan) - 1) : null;
+
+    if (currentRoom === ADMIN_ROOM) {
+      // Tampilkan semua unit
+      for (const [roomKey, monthlyData] of Object.entries(trendResult.data)) {
+        let val;
+        if (monthIndex !== null) {
+          val = monthlyData[monthIndex] || 0;
+        } else {
+          val = monthlyData.reduce((a,b) => a+b, 0); // total tahunan
+        }
+        labels.push(ROOMS[roomKey]?.label || roomKey);
+        values.push(val);
+        colors.push(ROOM_COLORS[roomKey] || '#000');
+      }
+    } else {
+      // Tampilkan unit aktif saja
+      const roomKey = currentRoom;
+      let val;
+      if (monthIndex !== null) {
+        val = trendResult.data[roomKey]?.[monthIndex] || 0;
+      } else {
+        val = trendResult.data[roomKey]?.reduce((a,b) => a+b, 0) || 0;
+      }
+      labels.push(ROOMS[roomKey]?.label || roomKey);
+      values.push(val);
+      colors.push(ROOM_COLORS[roomKey] || '#000');
+    }
+
+    drawBarChart(labels, values, colors);
+  }
+}
+
+function drawBarChart(labels, values, colors) {
+  if (!barChart) return;
+  barChart.innerHTML = '';
+  
+  const maxVal = Math.max(...values, 1); // minimal 1 agar tidak error
+  
+  labels.forEach((label, i) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'bar-label';
+    labelDiv.textContent = label;
+    
+    const track = document.createElement('div');
+    track.className = 'bar-track';
+    
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill';
+    fill.style.backgroundColor = colors[i];
+    fill.style.width = '0%'; // animasi
+    
+    const valueDiv = document.createElement('div');
+    valueDiv.className = 'bar-value';
+    valueDiv.textContent = values[i];
+    
+    fill.appendChild(valueDiv);
+    track.appendChild(fill);
+    row.appendChild(labelDiv);
+    row.appendChild(track);
+    barChart.appendChild(row);
+    
+    // Animasi muncul
+    setTimeout(() => {
+      fill.style.width = Math.min(100, (values[i] / maxVal) * 100) + '%';
+    }, 50);
+  });
+}
+
+// =========================================================
+// GRAFIK GARIS (LINE CHART) - Tren Tahunan
+// =========================================================
 function drawLineChart(datasets, labels) {
   if (!lineChart) return;
-
   lineChart.innerHTML = '';
   const canvas = document.createElement('canvas');
-  canvas.id = 'lineChartCanvas';
   canvas.style.width = '100%';
   canvas.style.height = '300px';
   lineChart.appendChild(canvas);
@@ -405,7 +485,7 @@ function drawLineChart(datasets, labels) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN (DIPERBAIKI)
+// MODAL DETAIL & EDIT LAPORAN
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
