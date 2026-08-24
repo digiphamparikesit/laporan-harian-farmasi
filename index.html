@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
   <header class="topbar">
     <div class="topbar-inner">
       <span class="topbar-title">Laporan Harian Farmasi</span>
@@ -17,47 +16,35 @@
   </header>
 
   <main class="container">
-
-    <!-- ===== TAB NAVIGASI ===== -->
     <nav id="tabNav" class="tab-nav hidden">
       <button id="tabInputBtn" class="tab-btn active">Input Laporan</button>
       <button id="tabRecapBtn" class="tab-btn">Rekap Laporan</button>
     </nav>
 
-    <!-- ===== LAYAR LOGIN ===== -->
     <section id="loginScreen" class="card">
       <h1 class="card-title">Masuk ke Ruangan</h1>
       <p class="card-subtitle">Pilih ruangan dan masukkan password untuk mulai input laporan shift.</p>
-
       <label class="field-label" for="roomSelect">Ruangan</label>
       <select id="roomSelect" class="input"></select>
-
       <label class="field-label" for="passwordInput">Password</label>
       <input id="passwordInput" class="input" type="password" placeholder="Masukkan password ruangan">
-
       <button id="loginBtn" class="btn-primary">Masuk</button>
       <p id="loginError" class="error-text hidden"></p>
     </section>
 
-    <!-- ===== LAYAR FORM ===== -->
     <section id="formScreen" class="card hidden">
       <h1 class="card-title" id="formTitle">Input Laporan</h1>
       <p class="card-subtitle">Isi data pelayanan untuk shift ini, lalu simpan.</p>
-
       <form id="reportForm"></form>
-
       <button id="submitBtn" class="btn-primary">Simpan Laporan</button>
       <p id="submitMessage" class="hidden"></p>
     </section>
 
-    <!-- ===== LAYAR REKAP LAPORAN ===== -->
     <section id="recapScreen" class="hidden">
       <div class="recap-columns">
-
         <div class="card recap-summary-sticky">
           <h1 class="card-title">Rekap Laporan</h1>
           <p class="card-subtitle">Ringkasan jumlah pelayanan tiap ruangan berdasarkan filter tahun &amp; bulan.</p>
-
           <div class="filter-row">
             <div id="adminRoomFilterWrap" class="filter-item hidden">
               <label class="field-label" for="adminRoomSelect">Ruangan</label>
@@ -74,41 +61,30 @@
               </select>
             </div>
           </div>
-
-          <!-- ===== TOMBOL EXPORT & PRINT ===== -->
           <div class="recap-actions">
-            <button id="exportExcelBtn" class="btn-secondary">
-              <span class="icon">📊</span> Export Excel
-            </button>
-            <button id="printPreviewBtn" class="btn-secondary">
-              <span class="icon">🖨️</span> Cetak Preview
-            </button>
+            <button id="exportExcelBtn" class="btn-secondary"><span class="icon">📊</span> Export Excel</button>
+            <button id="printPreviewBtn" class="btn-secondary"><span class="icon">🖨️</span> Cetak Preview</button>
           </div>
-
           <div id="statCards" class="stat-cards"></div>
         </div>
-
         <div class="card recap-chart-card">
           <h2 class="chart-title" id="chartTitle">Grafik Nilai Pelayanan</h2>
           <div id="barChart" class="bar-chart"></div>
         </div>
-
       </div>
 
       <div class="card recap-daily-card">
         <h2 class="chart-title">Kelengkapan Laporan per Tanggal - <span id="dailyRoomLabel"></span></h2>
-        <p class="card-subtitle">Tanggal <span class="daily-legend-dot day-missing"></span> berarti belum ada laporan masuk sampai hari ini. Pilih Bulan tertentu (bukan "Semua Bulan") di filter atas untuk melihat ini.</p>
+        <p class="card-subtitle">Tanggal <span class="daily-legend-dot day-missing"></span> berarti belum ada laporan masuk sampai hari ini.</p>
         <div id="dailyCalendar" class="daily-calendar"></div>
       </div>
 
       <div id="adminTrendPanel" class="card recap-trend-panel hidden">
         <h2 class="chart-title">Grafik Tren Semua Unit - Tahun <span id="trendYearLabel"></span></h2>
-        <p class="card-subtitle">Total metrik utama tiap ruangan per bulan (Januari-Desember), sesuai Tahun yang dipilih di filter atas.</p>
         <div id="lineChartLegend" class="line-chart-legend"></div>
         <div id="lineChart" class="line-chart"></div>
       </div>
     </section>
-
   </main>
 
   <div id="loadingOverlay" class="loading-overlay hidden">
@@ -116,7 +92,6 @@
     <span>Memproses...</span>
   </div>
 
-  <!-- ===== MODAL DETAIL LAPORAN ===== -->
   <div id="reportModalOverlay" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -124,14 +99,6 @@
         <button id="modalCloseBtn" class="modal-close" aria-label="Tutup">&times;</button>
       </div>
       <div id="modalBody" class="modal-body"></div>
-      
-      <!-- Tombol Aksi di Modal -->
-      <div id="modalActions" class="modal-actions hidden">
-        <button id="editReportBtn" class="btn-warning">✏️ Edit Laporan</button>
-        <button id="deleteReportBtn" class="btn-danger">🗑️ Hapus Laporan</button>
-      </div>
-      
-      <!-- Form Edit Laporan -->
       <div id="editFormContainer" class="hidden">
         <h3 style="margin: 0 0 12px 0; font-size: 15px;">Edit Laporan</h3>
         <form id="editReportForm"></form>
