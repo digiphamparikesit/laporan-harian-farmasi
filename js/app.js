@@ -28,6 +28,7 @@ const reportForm = document.getElementById('reportForm');
 const recapYear = document.getElementById('recapYear');
 const recapMonth = document.getElementById('recapMonth');
 const adminRoomSelect = document.getElementById('adminRoomSelect');
+const adminRoomFilterWrap = document.getElementById('adminRoomFilterWrap'); // Tambahan
 const exportExcelBtn = document.getElementById('exportExcelBtn');
 const printPreviewBtn = document.getElementById('printPreviewBtn');
 const statCards = document.getElementById('statCards');
@@ -160,11 +161,21 @@ function renderForm(roomKey) {
 }
 
 function showFormScreen() {
+  if (!loginScreen || !formScreen || !recapScreen) return;
+
   loginScreen.classList.add('hidden');
   logoutBtn.classList.remove('hidden');
   if (tabNav) tabNav.classList.remove('hidden');
 
+  // Tampilkan filter ruangan khusus ADMIN
+  if (currentRoom === ADMIN_ROOM) {
+    if (adminRoomFilterWrap) adminRoomFilterWrap.classList.remove('hidden');
+  } else {
+    if (adminRoomFilterWrap) adminRoomFilterWrap.classList.add('hidden');
+  }
+
   if (currentRoom && currentRoom !== ADMIN_ROOM) {
+    // USER BIASA
     formScreen.classList.remove('hidden');
     recapScreen.classList.add('hidden');
     tabInputBtn.classList.add('active');
@@ -173,6 +184,7 @@ function showFormScreen() {
     activeRoomBadge.classList.remove('hidden');
     renderForm(currentRoom);
   } else {
+    // ADMIN
     formScreen.classList.add('hidden');
     recapScreen.classList.remove('hidden');
     tabRecapBtn.classList.add('active');
@@ -214,6 +226,10 @@ function initFilters() {
       opt.textContent = ROOMS[roomKey].label;
       adminRoomSelect.appendChild(opt);
     });
+    // Set default ke ruangan pertama
+    if (Object.keys(ROOMS).length > 0) {
+      adminRoomSelect.value = Object.keys(ROOMS)[0];
+    }
   }
 }
 
@@ -391,7 +407,6 @@ async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
   if (!result.success) { alert('Gagal memuat data: ' + result.message); return; }
 
-  // GUARD: pastikan elemen modal ada
   if (!reportModalOverlay || !modalTitle || !modalBody || !modalActions || !editFormContainer) {
     console.error('❌ Elemen modal tidak ditemukan! Periksa ID di HTML.');
     alert('Terjadi kesalahan pada tampilan modal. Muat ulang halaman.');
@@ -423,7 +438,6 @@ async function showDayReports(room, tanggal, bulan, tahun) {
   });
 }
 
-// Helper konversi tanggal
 function convertDateForInput(dateStr) {
   if (!dateStr) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
@@ -433,7 +447,6 @@ function convertDateForInput(dateStr) {
 }
 
 function openEditModal(report) {
-  // GUARD: pastikan elemen modal ada
   if (!reportModalOverlay || !modalBody || !editFormContainer || !editReportForm || !saveEditBtn || !cancelEditBtn) {
     alert('Elemen modal tidak ditemukan. Muat ulang halaman.');
     return;
@@ -451,7 +464,6 @@ function openEditModal(report) {
   const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect.value];
   if (!room) { alert('Konfigurasi ruangan tidak ditemukan!'); return; }
 
-  // Fungsi pencarian nilai paling fleksibel
   function getValueFromReport(fieldKey) {
     if (!report) return '';
     if (report[fieldKey] !== undefined && report[fieldKey] !== null) return report[fieldKey];
@@ -466,7 +478,6 @@ function openEditModal(report) {
       if (cleanKey === searchKey || cleanKey.includes(searchKey)) return report[key];
     }
     
-    // Pencarian per kata
     var parts = searchKey.split('_');
     if (parts.length > 1) {
       for (var key2 in report) {
@@ -635,6 +646,7 @@ function handleLogout() {
   if (activeRoomBadge) activeRoomBadge.classList.add('hidden');
   if (tabNav) tabNav.classList.add('hidden');
   if (passwordInput) passwordInput.value = '';
+  if (adminRoomFilterWrap) adminRoomFilterWrap.classList.add('hidden');
 }
 
 loginBtn.addEventListener('click', async function () {
