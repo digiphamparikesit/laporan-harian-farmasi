@@ -28,7 +28,7 @@ const reportForm = document.getElementById('reportForm');
 const recapYear = document.getElementById('recapYear');
 const recapMonth = document.getElementById('recapMonth');
 const adminRoomSelect = document.getElementById('adminRoomSelect');
-const adminRoomFilterWrap = document.getElementById('adminRoomFilterWrap'); // Tambahan
+const adminRoomFilterWrap = document.getElementById('adminRoomFilterWrap');
 const exportExcelBtn = document.getElementById('exportExcelBtn');
 const printPreviewBtn = document.getElementById('printPreviewBtn');
 const statCards = document.getElementById('statCards');
@@ -160,6 +160,41 @@ function renderForm(roomKey) {
   });
 }
 
+// =========================================================
+// FUNGSI SIMPAN LAPORAN (PENTING)
+// =========================================================
+async function submitReport() {
+  if (!currentRoom || currentRoom === ADMIN_ROOM) {
+    alert('Anda tidak bisa menyimpan laporan sebagai ADMIN.');
+    return;
+  }
+
+  const formData = new FormData(reportForm);
+  const data = {};
+  formData.forEach((value, key) => {
+    data[key] = value;
+  });
+
+  // Konversi tanggal ke format dd/mm/yyyy jika diperlukan
+  if (data.tanggal) {
+    const parts = data.tanggal.split('-');
+    if (parts.length === 3) data.tanggal = `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+  console.log('📤 Mengirim data laporan:', data);
+  const result = await callApi({ action: 'submitReport', room: currentRoom, data: data });
+
+  if (result.success) {
+    alert('Laporan berhasil disimpan!');
+    reportForm.reset();
+  } else {
+    alert('Gagal menyimpan: ' + result.message);
+  }
+}
+
+// =========================================================
+// TAMPILKAN FORM
+// =========================================================
 function showFormScreen() {
   if (!loginScreen || !formScreen || !recapScreen) return;
 
@@ -167,7 +202,6 @@ function showFormScreen() {
   logoutBtn.classList.remove('hidden');
   if (tabNav) tabNav.classList.remove('hidden');
 
-  // Tampilkan filter ruangan khusus ADMIN
   if (currentRoom === ADMIN_ROOM) {
     if (adminRoomFilterWrap) adminRoomFilterWrap.classList.remove('hidden');
   } else {
@@ -175,7 +209,6 @@ function showFormScreen() {
   }
 
   if (currentRoom && currentRoom !== ADMIN_ROOM) {
-    // USER BIASA
     formScreen.classList.remove('hidden');
     recapScreen.classList.add('hidden');
     tabInputBtn.classList.add('active');
@@ -184,7 +217,6 @@ function showFormScreen() {
     activeRoomBadge.classList.remove('hidden');
     renderForm(currentRoom);
   } else {
-    // ADMIN
     formScreen.classList.add('hidden');
     recapScreen.classList.remove('hidden');
     tabRecapBtn.classList.add('active');
@@ -226,10 +258,7 @@ function initFilters() {
       opt.textContent = ROOMS[roomKey].label;
       adminRoomSelect.appendChild(opt);
     });
-    // Set default ke ruangan pertama
-    if (Object.keys(ROOMS).length > 0) {
-      adminRoomSelect.value = Object.keys(ROOMS)[0];
-    }
+    if (Object.keys(ROOMS).length > 0) adminRoomSelect.value = Object.keys(ROOMS)[0];
   }
 }
 
@@ -268,7 +297,6 @@ async function loadDailyCalendar(room, bulan, tahun) {
 
       const cell = document.createElement('div');
       cell.className = 'day-cell' + (hasReport ? ' has-report' : ' missing');
-
       const dayNum = document.createElement('div');
       dayNum.className = 'day-number';
       dayNum.textContent = day;
@@ -279,9 +307,6 @@ async function loadDailyCalendar(room, bulan, tahun) {
         countLabel.className = 'day-count';
         countLabel.textContent = count;
         cell.appendChild(countLabel);
-      }
-
-      if (hasReport) {
         cell.style.cursor = 'pointer';
         cell.addEventListener('click', function() {
           showDayReports(room, day, bulan, tahun);
@@ -401,13 +426,13 @@ function drawLineChart(datasets, labels) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN (DENGAN GUARD NULL)
+// MODAL DETAIL & EDIT LAPORAN
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
   if (!result.success) { alert('Gagal memuat data: ' + result.message); return; }
 
-  if (!reportModalOverlay || !modalTitle || !modalBody || !modalActions || !editFormContainer) {
+  if (!reportModalOverlay || !modalTitle || !modalBody || !editFormContainer) {
     console.error('❌ Elemen modal tidak ditemukan! Periksa ID di HTML.');
     alert('Terjadi kesalahan pada tampilan modal. Muat ulang halaman.');
     return;
@@ -416,9 +441,8 @@ async function showDayReports(room, tanggal, bulan, tahun) {
   reportModalOverlay.classList.remove('hidden');
   modalTitle.textContent = `Laporan Tanggal ${tanggal}/${bulan}/${tahun}`;
   modalBody.innerHTML = '';
-  modalActions.classList.add('hidden');
   editFormContainer.classList.add('hidden');
-  
+
   if (result.reports.length === 0) { modalBody.innerHTML = '<p>Tidak ada laporan untuk tanggal ini.</p>'; return; }
 
   result.reports.forEach((report) => {
@@ -453,7 +477,6 @@ function openEditModal(report) {
   }
 
   modalBody.classList.add('hidden');
-  modalActions.classList.add('hidden');
   editFormContainer.classList.remove('hidden');
 
   editingReportData = report;
@@ -471,13 +494,11 @@ function openEditModal(report) {
     if (report[possibleKey] !== undefined && report[possibleKey] !== null) return report[possibleKey];
     var upperKey = fieldKey.toUpperCase();
     if (report[upperKey] !== undefined && report[upperKey] !== null) return report[upperKey];
-    
     var searchKey = fieldKey.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     for (var key in report) {
       var cleanKey = key.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
       if (cleanKey === searchKey || cleanKey.includes(searchKey)) return report[key];
     }
-    
     var parts = searchKey.split('_');
     if (parts.length > 1) {
       for (var key2 in report) {
@@ -668,6 +689,14 @@ loginBtn.addEventListener('click', async function () {
     }
   }
 });
+
+// ===== EVENT TOMBOL SIMPAN LAPORAN (PENTING) =====
+if (submitBtn) {
+  submitBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    submitReport();
+  });
+}
 
 logoutBtn.addEventListener('click', handleLogout);
 
