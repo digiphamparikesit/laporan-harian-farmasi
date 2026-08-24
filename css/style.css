@@ -476,3 +476,20 @@ textarea.input {
   .recap-actions { flex-direction: column; }
   .btn-secondary { width: 100%; }
 }
+/* ===== STICKY TAB NAVIGASI ===== */
+.tab-nav {
+  position: sticky;
+  top: 56px;          /* Sesuaikan dengan tinggi topbar (padding 14px + font 16px) */
+  z-index: 90;        /* Agar berada di atas konten lain */
+  background: #F3F6F7; /* Warna latar agar menutupi konten yang lewat di bawahnya */
+  padding: 10px 0;    /* Ruang vertikal agar tidak terlalu rapat */
+  margin: 0 -20px;    /* Melebar ke samping agar konsisten dengan container */
+  padding-left: 20px;
+  padding-right: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05); /* Opsional: bayangan tipis */
+}
+
+/* Jika ada elemen di dalam tab yang ingin tetap rapi */
+.tab-nav .tab-btn {
+  margin: 0;
+}
