@@ -220,7 +220,6 @@ function refreshRecapData() {
   const tahun = recapYear.value;
   const bulan = recapMonth.value;
 
-  // 1. Muat Kalender Harian
   if (currentRoom && currentRoom !== ADMIN_ROOM && bulan) {
     dailyRoomLabel.textContent = ROOMS[currentRoom].label;
     loadDailyCalendar(currentRoom, bulan, tahun);
@@ -231,7 +230,6 @@ function refreshRecapData() {
     dailyCalendar.innerHTML = '<p style="padding:20px;text-align:center;">Pilih bulan untuk melihat kelengkapan laporan.</p>';
   }
 
-  // 2. Muat Statistik & Grafik
   loadRecapData(tahun, bulan);
 }
 
@@ -254,21 +252,18 @@ async function loadDailyCalendar(room, bulan, tahun) {
       const cell = document.createElement('div');
       cell.className = 'day-cell' + (hasReport ? ' has-report' : ' missing');
 
-      // Tanggal
       const dayNum = document.createElement('div');
       dayNum.className = 'day-number';
       dayNum.textContent = day;
       cell.appendChild(dayNum);
 
-      // Jumlah laporan (jika ada)
       if (hasReport) {
         const countLabel = document.createElement('div');
         countLabel.className = 'day-count';
-        countLabel.textContent = count; // misal: 3
+        countLabel.textContent = count;
         cell.appendChild(countLabel);
       }
 
-      // Jika ada laporan, tambahkan event click untuk melihat detail
       if (hasReport) {
         cell.style.cursor = 'pointer';
         cell.addEventListener('click', function() {
@@ -285,13 +280,11 @@ async function loadDailyCalendar(room, bulan, tahun) {
 // LOAD DATA REKAP & GRAFIK
 // =========================================================
 async function loadRecapData(tahun, bulan) {
-  // Ambil data rekap (untuk stat cards)
   const room = (currentRoom === ADMIN_ROOM && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
   if (!room) return;
 
   const result = await callApi({ action: 'getRecap', room: room, bulan: bulan, tahun: tahun });
   if (result.success) {
-    // Render Stat Cards
     statCards.innerHTML = '';
     for (const [key, value] of Object.entries(result.data)) {
       const card = document.createElement('div');
@@ -301,13 +294,10 @@ async function loadRecapData(tahun, bulan) {
     }
   }
 
-  // Ambil data tahunan untuk grafik garis
   const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
   if (trendResult.success) {
-    // Jika admin, tampilkan semua ruangan. Jika user, tampilkan ruangan tersebut saja.
     let datasets = [];
     if (currentRoom === ADMIN_ROOM) {
-      // Semua ruangan
       for (const [roomKey, monthlyData] of Object.entries(trendResult.data)) {
         datasets.push({
           label: ROOMS[roomKey]?.label || roomKey,
@@ -316,7 +306,6 @@ async function loadRecapData(tahun, bulan) {
         });
       }
     } else {
-      // Hanya ruangan aktif
       const roomKey = currentRoom;
       datasets.push({
         label: ROOMS[roomKey]?.label || roomKey,
@@ -325,19 +314,13 @@ async function loadRecapData(tahun, bulan) {
       });
     }
 
-    // Gambar grafik garis
     drawLineChart(datasets, MONTHS_ID_SHORT);
   }
 }
 
-// =========================================================
-// FUNGSI GAMBAR GRAFIK GARIS (Canvas Murni)
-// =========================================================
 function drawLineChart(datasets, labels) {
-  // Pastikan elemen lineChart tersedia
   if (!lineChart) return;
 
-  // Hapus konten lama dan buat canvas baru
   lineChart.innerHTML = '';
   const canvas = document.createElement('canvas');
   canvas.id = 'lineChartCanvas';
@@ -349,21 +332,18 @@ function drawLineChart(datasets, labels) {
   const width = canvas.width = canvas.offsetWidth;
   const height = canvas.height = canvas.offsetHeight;
 
-  // Padding untuk area grafik
   const padding = { top: 30, right: 30, bottom: 40, left: 50 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Hitung nilai maksimum dari semua data untuk skala Y
   let maxVal = 0;
   datasets.forEach(ds => {
     ds.data.forEach(val => {
       if (val > maxVal) maxVal = val;
     });
   });
-  if (maxVal === 0) maxVal = 10; // agar tidak kosong
+  if (maxVal === 0) maxVal = 10;
 
-  // Gambar sumbu Y
   ctx.strokeStyle = '#ccc';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -371,7 +351,6 @@ function drawLineChart(datasets, labels) {
   ctx.lineTo(padding.left, height - padding.bottom);
   ctx.stroke();
 
-  // Gambar garis grid horizontal
   const yTicks = 5;
   for (let i = 0; i <= yTicks; i++) {
     const y = padding.top + (chartHeight / yTicks) * i;
@@ -382,21 +361,18 @@ function drawLineChart(datasets, labels) {
     ctx.lineTo(width - padding.right, y);
     ctx.stroke();
 
-    // Label Y
     ctx.fillStyle = '#666';
     ctx.font = '12px Arial';
     ctx.textAlign = 'right';
     ctx.fillText(Math.round(value), padding.left - 10, y + 4);
   }
 
-  // Gambar sumbu X
   ctx.strokeStyle = '#ccc';
   ctx.beginPath();
   ctx.moveTo(padding.left, height - padding.bottom);
   ctx.lineTo(width - padding.right, height - padding.bottom);
   ctx.stroke();
 
-  // Label X
   ctx.fillStyle = '#666';
   ctx.font = '12px Arial';
   ctx.textAlign = 'center';
@@ -405,7 +381,6 @@ function drawLineChart(datasets, labels) {
     ctx.fillText(label, x, height - padding.bottom + 20);
   });
 
-  // Gambar garis untuk setiap dataset
   datasets.forEach(ds => {
     ctx.strokeStyle = ds.color;
     ctx.lineWidth = 2;
@@ -418,7 +393,6 @@ function drawLineChart(datasets, labels) {
     });
     ctx.stroke();
 
-    // Gambar titik
     ds.data.forEach((val, i) => {
       const x = padding.left + (chartWidth / (ds.data.length - 1)) * i;
       const y = padding.top + chartHeight - (val / maxVal) * chartHeight;
@@ -431,7 +405,7 @@ function drawLineChart(datasets, labels) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN
+// MODAL DETAIL & EDIT LAPORAN (DIPERBAIKI)
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
