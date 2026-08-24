@@ -448,7 +448,7 @@ function drawLineChart(datasets, labels) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN (DIPERBAIKI)
+// MODAL DETAIL & EDIT LAPORAN (REVISI TERBARU)
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
@@ -502,21 +502,22 @@ function openEditModal(report) {
   const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect.value];
   if (!room) return;
 
-  // Helper untuk mencari nilai berdasarkan key config.js, karena header di spreadsheet bisa berbeda
+  // HELPER BARU: Mencocokkan key config.js dengan header spreadsheet
   function getValueFromReport(fieldKey) {
     // 1. Coba langsung dengan key
-    if (report[fieldKey] !== undefined) return report[fieldKey];
+    if (report[fieldKey] !== undefined && report[fieldKey] !== null) return report[fieldKey];
     
-    // 2. Coba dengan mengubah key menjadi format header spreadsheet
-    // Contoh: 'JUMLAH_RESEP' -> 'JUMLAH RESEP'
+    // 2. Coba ubah underscore menjadi spasi
     var possibleKey = fieldKey.replace(/_/g, ' ');
-    if (report[possibleKey] !== undefined) return report[possibleKey];
+    if (report[possibleKey] !== undefined && report[possibleKey] !== null) return report[possibleKey];
 
-    // 3. Coba dengan pencarian fleksibel (mengabaikan spasi, kapital, dan garis bawah)
+    // 3. Pencarian Fleksibel (Mengabaikan spasi/underscore, dan mencari bagian kata / substring)
+    // Contoh: 'JUMLAH_RESEP' cocok dengan 'JUMLAH RESEP TERLAYANI'
     var searchKey = fieldKey.replace(/[_\s]/g, '').toLowerCase();
     for (var key in report) {
       var cleanKey = key.replace(/[_\s]/g, '').toLowerCase();
-      if (cleanKey === searchKey) {
+      // Jika sama persis, ATAU searchKey ada di dalam cleanKey
+      if (cleanKey === searchKey || cleanKey.includes(searchKey)) {
         return report[key];
       }
     }
