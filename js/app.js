@@ -8,7 +8,20 @@ let editingRoom = null;
 let editingReportData = null;
 let roomPasswords = {}; // Cache password dari server
 
-// ... semua variabel DOM tetap sama ...
+// =========================================================
+// AMBIL ELEMEN DOM
+// =========================================================
+// Pastikan elemen diambil setelah DOM siap
+const roomSelect = document.getElementById('roomSelect');
+const passwordInput = document.getElementById('passwordInput');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+const logoutBtn = document.getElementById('logoutBtn');
+const activeRoomBadge = document.getElementById('activeRoomBadge');
+const formScreen = document.getElementById('formScreen');
+const loginScreen = document.getElementById('loginScreen');
+const recapScreen = document.getElementById('recapScreen');
+// ... (dan elemen lainnya jika ada)
 
 // =========================================================
 // HELPER: panggil Apps Script
@@ -67,12 +80,21 @@ async function loadPasswords() {
 }
 
 // =========================================================
-// INIT
+// INIT - ISIAN DROPDOWN
 // =========================================================
 function init() {
   console.log('🚀 INIT: Memulai aplikasi...');
   
-  // Populate room select
+  // Pastikan roomSelect ada
+  if (!roomSelect) {
+    console.error('❌ Elemen #roomSelect tidak ditemukan!');
+    return;
+  }
+  
+  // Kosongkan dropdown terlebih dahulu (jika ada isi lama)
+  roomSelect.innerHTML = '';
+  
+  // Populate room select dari ROOMS
   Object.keys(ROOMS).forEach(function (roomKey) {
     const opt = document.createElement('option');
     opt.value = roomKey;
@@ -80,6 +102,7 @@ function init() {
     roomSelect.appendChild(opt);
   });
 
+  // Tambahkan opsi ADMIN
   const adminOpt = document.createElement('option');
   adminOpt.value = ADMIN_ROOM;
   adminOpt.textContent = 'ADMIN (Lihat Semua Laporan)';
@@ -152,6 +175,17 @@ loginBtn.addEventListener('click', async function () {
     loginError.classList.remove('hidden');
   }
 });
+
+// =========================================================
+// PANGGIL INIT SAAT DOM READY
+// =========================================================
+// Jika script diletakkan di akhir body, ini sudah aman, tapi tambahkan guard:
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  // DOM sudah siap, langsung panggil
+  init();
+}
 
 // =========================================================
 // FUNGSI LAINNYA (SAMA SEPERTI SEBELUMNYA)
