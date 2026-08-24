@@ -79,16 +79,15 @@ function showLoading(state) {
 // INIT
 // =========================================================
 function init() {
+  // Populate room select from ROOMS config
   Object.keys(ROOMS).forEach(function (roomKey) {
     const opt = document.createElement('option');
     opt.value = roomKey;
-    opt.textContent = ROOMS[roomKey].fields.length === 0
-      ? ROOMS[roomKey].label + ' (segera hadir)'
-      : ROOMS[roomKey].label;
-    if (ROOMS[roomKey].fields.length === 0) opt.disabled = true;
+    opt.textContent = ROOMS[roomKey].label;
     roomSelect.appendChild(opt);
   });
 
+  // Add admin option
   const adminOpt = document.createElement('option');
   adminOpt.value = ADMIN_ROOM;
   adminOpt.textContent = 'ADMIN (Lihat Semua Laporan)';
@@ -102,7 +101,7 @@ function init() {
 }
 
 // =========================================================
-// LOGIN
+// LOGIN - DENGAN VALIDASI
 // =========================================================
 loginBtn.addEventListener('click', async function () {
   const room = roomSelect.value;
@@ -115,12 +114,20 @@ loginBtn.addEventListener('click', async function () {
     return;
   }
 
+  // VALIDASI: cek apakah ruangan ada di ROOMS
+  if (room !== ADMIN_ROOM && !ROOMS[room]) {
+    loginError.textContent = 'Ruangan tidak ditemukan. Silakan pilih ruangan yang valid.';
+    loginError.classList.remove('hidden');
+    return;
+  }
+
   const result = await callApi({ action: 'login', room: room, password: password });
 
   if (result.success) {
     currentRoom = room;
     sessionStorage.setItem('activeRoom', room);
     passwordInput.value = '';
+    loginError.classList.add('hidden');
     showFormScreen();
   } else {
     loginError.textContent = result.message || 'Login gagal.';
@@ -143,13 +150,14 @@ logoutBtn.addEventListener('click', function () {
 });
 
 // =========================================================
-// TAMPILKAN LAYAR FORM
+// TAMPILKAN LAYAR FORM - DENGAN VALIDASI
 // =========================================================
 async function showFormScreen() {
+  // VALIDASI: cek apakah currentRoom valid
   if (currentRoom !== ADMIN_ROOM && !ROOMS[currentRoom]) {
     sessionStorage.removeItem('activeRoom');
     currentRoom = null;
-    loginError.textContent = 'Sesi login sebelumnya sudah tidak berlaku (mungkin ada perubahan data ruangan). Silakan login ulang.';
+    loginError.textContent = 'Ruangan tidak ditemukan. Silakan login ulang.';
     loginError.classList.remove('hidden');
     loginScreen.classList.remove('hidden');
     formScreen.classList.add('hidden');
@@ -175,10 +183,15 @@ async function showFormScreen() {
 
     if (adminRoomSelect.options.length === 0) {
       RECAP_ROOM_LIST.forEach(function (roomKey) {
-        const opt = document.createElement('option');
-        opt.value = roomKey;
-        opt.textContent = ROOMS[roomKey].label;
-        adminRoomSelect.appendChild(opt);
+        // VALIDASI: cek apakah roomKey ada di ROOMS
+        if (ROOMS[roomKey]) {
+          const opt = document.createElement('option');
+          opt.value = roomKey;
+          opt.textContent = ROOMS[roomKey].label;
+          adminRoomSelect.appendChild(opt);
+        } else {
+          console.warn('Room key tidak ditemukan di ROOMS:', roomKey);
+        }
       });
       adminRoomSelect.addEventListener('change', loadRecap);
     }
@@ -424,17 +437,30 @@ recapYear.addEventListener('change', loadRecap);
 recapMonth.addEventListener('change', loadRecap);
 
 // =========================================================
-// AMBIL DATA REKAP
+// AMBIL DATA REKAP - DENGAN VALIDASI
 // =========================================================
 function getTargetRoom() {
-  return currentRoom === ADMIN_ROOM ? adminRoomSelect.value : currentRoom;
+  const room = currentRoom === ADMIN_ROOM ? adminRoomSelect.value : currentRoom;
+  
+  // VALIDASI: cek apakah room ada di ROOMS
+  if (room && room !== ADMIN_ROOM && !ROOMS[room]) {
+    console.error('Ruangan tidak ditemukan:', room);
+    return null;
+  }
+  
+  return room;
 }
 
 async function loadRecap() {
   const room = getTargetRoom();
-  if (!room) return;
+  if (!room) {
+    statCards.innerHTML = '<p class="error-text">Ruangan tidak ditemukan. Silakan pilih ruangan yang valid.</p>';
+    barChart.innerHTML = '';
+    dailyCalendar.innerHTML = '';
+    return;
+  }
 
-  chartTitle.textContent = 'Grafik Nilai Pelayanan - ' + ROOMS[room].label;
+  chartTitle.textContent = 'Grafik Nilai Pelayanan - ' + (ROOMS[room] ? ROOMS[room].label : 'Unknown');
 
   const result = await callApi({
     action: 'getRecap',
@@ -446,6 +472,12 @@ async function loadRecap() {
   if (!result.success) {
     statCards.innerHTML = '<p class="error-text">' + (result.message || 'Gagal memuat rekap.') + '</p>';
     barChart.innerHTML = '';
+    return;
+  }
+
+  // VALIDASI: cek apakah room valid sebelum mengakses fields
+  if (!ROOMS[room]) {
+    statCards.innerHTML = '<p class="error-text">Konfigurasi ruangan tidak ditemukan.</p>';
     return;
   }
 
@@ -683,7 +715,6 @@ reportModalOverlay.addEventListener('click', function (e) {
 
 function closeReportModal() {
   reportModalOverlay.classList.add('hidden');
-  // Reset edit state
   editFormContainer.classList.add('hidden');
   modalActions.classList.add('hidden');
   modalBody.classList.remove('hidden');
@@ -697,10 +728,12 @@ async function openDayReports(room, day, bulanNum, tahun) {
   modalBody.innerHTML = '<p class="card-subtitle">Memuat...</p>';
   reportModalOverlay.classList.remove('hidden');
   
-  // Hide edit form initially
   editFormContainer.classList.add('hidden');
   modalActions.classList.add('hidden');
   modalBody.classList.remove('hidden');
+  
+  // Simpan room untuk edit
+  editingRoom = room;
   
   const result = await callApi({
     action: 'getDayReports',
@@ -720,9 +753,6 @@ async function openDayReports(room, day, bulanNum, tahun) {
     return;
   }
 
-  // Store room and reports for editing
-  editingRoom = room;
-  
   modalBody.innerHTML = '';
   result.reports.forEach(function(rep, idx) {
     const block = document.createElement('div');
@@ -759,14 +789,14 @@ async function openDayReports(room, day, bulanNum, tahun) {
     block.appendChild(table);
     modalBody.appendChild(block);
     
-    // Store first report data for editing
+    // Simpan data report pertama untuk edit
     if (idx === 0) {
       editingReportData = rep;
       editingReportId = rep._id || rep.id || Date.now().toString();
     }
   });
   
-  // Show edit/delete buttons
+  // Tampilkan tombol edit/delete
   modalActions.classList.remove('hidden');
 }
 
@@ -775,7 +805,10 @@ async function openDayReports(room, day, bulanNum, tahun) {
 // =========================================================
 exportExcelBtn.addEventListener('click', async function() {
   const room = getTargetRoom();
-  if (!room) return;
+  if (!room) {
+    alert('Ruangan tidak ditemukan.');
+    return;
+  }
   
   const bulan = recapMonth.value;
   const tahun = recapYear.value;
@@ -793,16 +826,11 @@ exportExcelBtn.addEventListener('click', async function() {
   }
   
   const fields = ROOMS[room].fields;
-  
-  // Headers: Tanggal, Shift, then all fields
   const headers = ['Tanggal', 'Shift', ...fields.map(f => f.label)];
-  
-  // Build rows
   const rows = [];
   const totals = {};
   fields.forEach(f => totals[f.key] = 0);
   
-  // Sort by date
   const sortedData = (result.data || []).sort((a, b) => {
     return (a.tanggal || '').localeCompare(b.tanggal || '');
   });
@@ -819,17 +847,15 @@ exportExcelBtn.addEventListener('click', async function() {
     rows.push(row);
   });
   
-  // Add totals row
+  // Baris TOTAL
   const totalRow = ['TOTAL', ''];
   fields.forEach(f => totalRow.push(totals[f.key]));
   rows.push(totalRow);
   
-  // Create CSV content
   const csvContent = [headers, ...rows]
     .map(row => row.join(','))
     .join('\n');
   
-  // Download with BOM for UTF-8
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const monthLabel = bulan ? MONTHS_ID[bulan - 1] : 'semua';
@@ -852,16 +878,18 @@ printPreviewBtn.addEventListener('click', function() {
 // EDIT LAPORAN
 // =========================================================
 editReportBtn.addEventListener('click', function() {
-  // Hide detail, show edit form
+  const modalBody = document.getElementById('modalBody');
+  const modalActions = document.getElementById('modalActions');
+  const editContainer = document.getElementById('editFormContainer');
+  
   modalBody.classList.add('hidden');
   modalActions.classList.add('hidden');
-  editFormContainer.classList.remove('hidden');
+  editContainer.classList.remove('hidden');
   
-  // Populate form with existing data
   const fields = ROOMS[editingRoom].fields;
-  editReportForm.innerHTML = '';
+  const form = document.getElementById('editReportForm');
+  form.innerHTML = '';
   
-  // Build edit form with 2 columns layout
   const columnsWrap = document.createElement('div');
   columnsWrap.className = 'form-columns';
   
@@ -871,17 +899,17 @@ editReportBtn.addEventListener('click', function() {
   const rightCol = document.createElement('div');
   rightCol.className = 'form-col form-col-right';
   
-  // Split fields
+  // Meta fields (date, select) di kiri
   const metaFields = fields.filter(f => f.type === 'date' || f.type === 'select');
   const staffFields = fields.filter(f => f.type === 'staff');
   const otherFields = fields.filter(f => f.type !== 'date' && f.type !== 'select' && f.type !== 'staff');
   
   metaFields.forEach(f => {
-    const wrapper = buildEditFieldGroup(f);
+    const wrapper = createEditFieldGroup(f);
     leftCol.appendChild(wrapper);
   });
   
-  // Staff fields
+  // Staff fields di kiri dengan grid
   if (staffFields.length) {
     const groups = {};
     const groupOrder = [];
@@ -906,7 +934,7 @@ editReportBtn.addEventListener('click', function() {
       grid.className = 'staff-grid';
       grid.style.gridTemplateColumns = 'repeat(' + staffColumns + ', 1fr)';
       groups[g].forEach(function (f) { 
-        grid.appendChild(buildEditFieldGroup(f)); 
+        grid.appendChild(createEditFieldGroup(f)); 
       });
       staffWrap.appendChild(grid);
     });
@@ -914,18 +942,19 @@ editReportBtn.addEventListener('click', function() {
     leftCol.appendChild(staffWrap);
   }
   
+  // Numeric fields di kanan dengan grid
   otherFields.forEach(f => {
-    rightCol.appendChild(buildEditFieldGroup(f));
+    rightCol.appendChild(createEditFieldGroup(f));
   });
   
   columnsWrap.appendChild(leftCol);
   columnsWrap.appendChild(rightCol);
-  editReportForm.appendChild(columnsWrap);
+  form.appendChild(columnsWrap);
   
-  saveEditBtn.dataset.reportId = editingReportId;
+  document.getElementById('saveEditBtn').dataset.reportId = editingReportId;
 });
 
-function buildEditFieldGroup(field) {
+function createEditFieldGroup(field) {
   const wrapper = document.createElement('div');
   wrapper.className = 'form-group' + (field.type === 'textarea' ? ' form-group-full' : '');
   
@@ -984,7 +1013,6 @@ function buildEditFieldGroup(field) {
   inputEl.className = 'input';
   inputEl.id = 'edit_f_' + field.key;
   
-  // Set value from editingReportData
   if (editingReportData && editingReportData[field.key] !== undefined) {
     inputEl.value = editingReportData[field.key];
   }
@@ -993,18 +1021,12 @@ function buildEditFieldGroup(field) {
   return wrapper;
 }
 
-// =========================================================
-// CANCEL EDIT
-// =========================================================
 cancelEditBtn.addEventListener('click', function() {
-  editFormContainer.classList.add('hidden');
-  modalBody.classList.remove('hidden');
-  modalActions.classList.remove('hidden');
+  document.getElementById('editFormContainer').classList.add('hidden');
+  document.getElementById('modalBody').classList.remove('hidden');
+  document.getElementById('modalActions').classList.remove('hidden');
 });
 
-// =========================================================
-// SAVE EDIT
-// =========================================================
 saveEditBtn.addEventListener('click', async function() {
   const reportId = this.dataset.reportId;
   if (!reportId || !editingRoom) {
@@ -1047,9 +1069,6 @@ saveEditBtn.addEventListener('click', async function() {
   }
 });
 
-// =========================================================
-// DELETE LAPORAN
-// =========================================================
 deleteReportBtn.addEventListener('click', async function() {
   if (!editingReportId || !editingRoom) {
     alert('Error: Data laporan tidak ditemukan.');
