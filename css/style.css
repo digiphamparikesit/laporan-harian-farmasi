@@ -519,3 +519,12 @@ textarea.input {
   overflow-y: auto;
   flex: 1;
 }
+/* ===== PERBAIKAN SCROLL MODAL ===== */
+.modal-body, #editFormContainer {
+   overflow-y: auto;
+   max-height: 60vh; /* Batasi tinggi agar bisa di-scroll */
+}
+
+#editFormContainer {
+   max-height: 70vh;
+}
