@@ -8,16 +8,16 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-
 // ROOM ADMIN
 const ADMIN_ROOM = 'admin';
 
-// DAFTAR RUANGAN UNTUK REKAP - PASTIKAN SAMA DENGAN BACKEND
+// DAFTAR RUANGAN - HARUS SAMA PERSIS DENGAN ROOM_NAME_MAP DI CODE.GS
 const RECAP_ROOM_LIST = [
-  'depo_igd',
-  'depo_ibs',
-  'depo_irna1_paviliun',        // ← PERBAIKI: paviliun (bukan pavilion)
-  'depo_rawat_jalan',
-  'depo_rawat_jalan_maternitas',
-  'depo_irin_maternitas',       // ← PERBAIKI: irin (bukan irna)
-  'depo_cathlab',
-  'depo_onkologi_terpadu'       // ← PERBAIKI: onkologi (bukan ongkologi)
+  'depo_igd',                    // DEPO FARMASI IGD
+  'depo_ibs',                    // DEPO FARMASI IBS
+  'depo_irna1_paviliun',         // DEPO FARMASI IRNA 1 dan Paviliun
+  'depo_rawat_jalan',            // DEPO FARMASI RAWAT JALAN
+  'depo_rawat_jalan_maternitas', // DEPO FARMASI RAWAT JALAN MATERNITAS
+  'depo_irin_maternitas',        // DEPO FARMASI IRIN DAN MATERNITAS
+  'depo_cathlab',                // DEPO FARMASI CATHLAB
+  'depo_onkologi_terpadu'        // DEPO FARMASI ONKOLOGI TERPADU
 ];
 
 // WARNA GRAFIK
@@ -39,7 +39,7 @@ const MONTHS_ID_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
                          'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 // =========================================================
-// KONFIGURASI RUANGAN (DEPO FARMASI)
+// KONFIGURASI RUANGAN - KEY HARUS SAMA DENGAN RECAP_ROOM_LIST
 // =========================================================
 const ROOMS = {
   depo_igd: {
@@ -72,7 +72,7 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  depo_irna1_paviliun: {   // ← PERBAIKI: paviliun
+  depo_irna1_paviliun: {
     label: 'DEPO FARMASI IRNA 1 dan Paviliun',
     staffColumns: 2,
     fields: [
@@ -122,7 +122,7 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  depo_irin_maternitas: {   // ← PERBAIKI: irin
+  depo_irin_maternitas: {
     label: 'DEPO FARMASI IRIN DAN MATERNITAS',
     staffColumns: 2,
     fields: [
@@ -152,7 +152,7 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  depo_onkologi_terpadu: {   // ← PERBAIKI: onkologi
+  depo_onkologi_terpadu: {
     label: 'DEPO FARMASI ONKOLOGI TERPADU',
     staffColumns: 2,
     fields: [
@@ -174,7 +174,7 @@ const ROOMS = {
 };
 
 // =========================================================
-// FUNGSI VALIDASI RUANGAN
+// FUNGSI VALIDASI
 // =========================================================
 function isValidRoom(roomKey) {
   if (!roomKey) return false;
@@ -187,14 +187,23 @@ function getRoomLabel(roomKey) {
   return ROOMS[roomKey] ? ROOMS[roomKey].label : 'Unknown';
 }
 
+// =========================================================
+// DEBUG - CEK KONSISTENSI
+// =========================================================
 console.log('✅ CONFIG LOADED - ROOMS:', Object.keys(ROOMS));
 console.log('✅ RECAP_ROOM_LIST:', RECAP_ROOM_LIST);
 
-// Cek konsistensi
 RECAP_ROOM_LIST.forEach(function(room) {
-  if (!ROOMS[room]) {
-    console.error('❌ ERROR: Room "' + room + '" ada di RECAP_ROOM_LIST tapi tidak ada di ROOMS!');
+  if (ROOMS[room]) {
+    console.log('✅ Room "' + room + '" valid -> ' + ROOMS[room].label);
   } else {
-    console.log('✅ Room "' + room + '" valid');
+    console.error('❌ ERROR: Room "' + room + '" ada di RECAP_ROOM_LIST tapi TIDAK ADA di ROOMS!');
+  }
+});
+
+// Cek semua ROOMS ada di RECAP_ROOM_LIST
+Object.keys(ROOMS).forEach(function(room) {
+  if (!RECAP_ROOM_LIST.includes(room)) {
+    console.warn('⚠️ WARNING: Room "' + room + '" ada di ROOMS tapi TIDAK ADA di RECAP_ROOM_LIST');
   }
 });
