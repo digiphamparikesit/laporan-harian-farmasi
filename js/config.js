@@ -8,7 +8,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-
 // ROOM ADMIN (untuk melihat semua laporan)
 const ADMIN_ROOM = 'admin';
 
-// DAFTAR RUANGAN UNTUK REKAP - PASTIKAN SAMA PERSIS DENGAN KEY DI ROOMS
+// DAFTAR RUANGAN UNTUK REKAP
 const RECAP_ROOM_LIST = [
   'depo_igd',
   'depo_ibs',
@@ -39,14 +39,12 @@ const MONTHS_ID_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
                          'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 // =========================================================
-// KONFIGURASI RUANGAN (DEPO FARMASI)
-// PASTIKAN KEY SAMA PERSIS DENGAN RECAP_ROOM_LIST
+// KONFIGURASI RUANGAN (DEPO FARMASI) - TANPA PASSWORD
+// PASSWORD DIAMBIL DARI GOOGLE SHEET
 // =========================================================
 const ROOMS = {
-  // DEPO FARMASI IGD
   depo_igd: {
     label: 'DEPO FARMASI IGD',
-    password: 'igd123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -60,11 +58,8 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  
-  // DEPO FARMASI IBS
   depo_ibs: {
     label: 'DEPO FARMASI IBS',
-    password: 'ibs123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -78,11 +73,8 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  
-  // DEPO FARMASI IRNA 1 dan Paviliun
   depo_irna1_paviliun: {
     label: 'DEPO FARMASI IRNA 1 dan Paviliun',
-    password: 'irna123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -98,11 +90,8 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  
-  // DEPO FARMASI RAWAT JALAN
   depo_rawat_jalan: {
     label: 'DEPO FARMASI RAWAT JALAN',
-    password: 'rj123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -119,11 +108,8 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  
-  // DEPO FARMASI RAWAT JALAN MATERNITAS
   depo_rawat_jalan_maternitas: {
     label: 'DEPO FARMASI RAWAT JALAN MATERNITAS',
-    password: 'rjm123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -137,11 +123,8 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  
-  // DEPO FARMASI IRIN DAN MATERNITAS
   depo_irin_maternitas: {
     label: 'DEPO FARMASI IRIN DAN MATERNITAS',
-    password: 'irin123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -155,11 +138,8 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  
-  // DEPO FARMASI CATHLAB
   depo_cathlab: {
     label: 'DEPO FARMASI CATHLAB',
-    password: 'cath123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -173,11 +153,8 @@ const ROOMS = {
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
-  
-  // DEPO FARMASI ONKOLOGI TERPADU
   depo_onkologi_terpadu: {
     label: 'DEPO FARMASI ONKOLOGI TERPADU',
-    password: 'onko123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -211,7 +188,4 @@ function getRoomLabel(roomKey) {
   return ROOMS[roomKey] ? ROOMS[roomKey].label : 'Unknown';
 }
 
-function getRoomFields(roomKey) {
-  if (roomKey === ADMIN_ROOM) return [];
-  return ROOMS[roomKey] ? ROOMS[roomKey].fields : [];
-}
+console.log('✅ CONFIG LOADED - ROOMS:', Object.keys(ROOMS));
