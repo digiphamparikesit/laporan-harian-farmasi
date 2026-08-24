@@ -181,9 +181,11 @@ function showFormScreen() {
 }
 
 // =========================================================
-// RECAP & KALENDER LOGIC
+// FILTER & RECAP LOGIC (DIPERBAIKI)
 // =========================================================
-function populateFilters() {
+// Fungsi ini HANYA dipanggil SEKALI saat init, agar tidak mereset pilihan user
+function initFilters() {
+  // Isi Tahun
   if (recapYear) {
     recapYear.innerHTML = '';
     const currentYear = new Date().getFullYear();
@@ -194,6 +196,8 @@ function populateFilters() {
       recapYear.appendChild(opt);
     }
   }
+
+  // Isi Bulan
   if (recapMonth) {
     recapMonth.innerHTML = '<option value="">Semua Bulan</option>';
     MONTHS_ID.forEach((month, i) => {
@@ -203,12 +207,21 @@ function populateFilters() {
       recapMonth.appendChild(opt);
     });
   }
+
+  // Isi Dropdown Ruangan (Khusus Admin)
+  if (adminRoomSelect) {
+    adminRoomSelect.innerHTML = '';
+    Object.keys(ROOMS).forEach(roomKey => {
+      const opt = document.createElement('option');
+      opt.value = roomKey;
+      opt.textContent = ROOMS[roomKey].label;
+      adminRoomSelect.appendChild(opt);
+    });
+  }
 }
 
-async function showRecapScreen() {
-  console.log('📊 Menampilkan layar rekap');
-  populateFilters();
-  
+// Fungsi ini dipanggil setiap kali filter berubah / layar rekap dibuka
+function refreshRecapData() {
   const tahun = recapYear.value;
   const bulan = recapMonth.value;
 
@@ -225,6 +238,12 @@ async function showRecapScreen() {
 
   // 2. Muat Statistik & Grafik
   loadRecapData(tahun, bulan);
+}
+
+// Fungsi showRecapScreen hanya menampilkan elemen (tanpa mereset filter)
+function showRecapScreen() {
+  console.log('📊 Menampilkan layar rekap');
+  refreshRecapData();
 }
 
 async function loadDailyCalendar(room, bulan, tahun) {
@@ -285,7 +304,7 @@ async function loadRecapData(tahun, bulan) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN
+// MODAL DETAIL & EDIT LAPORAN (DIPERBAIKI)
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
@@ -320,9 +339,9 @@ async function showDayReports(room, tanggal, bulan, tahun) {
     editBtn.textContent = 'Edit Laporan Ini';
     editBtn.className = 'btn-warning';
     editBtn.style.marginTop = '10px';
-    editBtn.addEventListener('click', function() {
+    editBtn.onclick = function() {
       openEditModal(report);
-    });
+    };
     
     reportDiv.appendChild(editBtn);
     modalBody.appendChild(reportDiv);
@@ -398,9 +417,9 @@ function openEditModal(report) {
     editReportForm.appendChild(input);
   });
 
-  // Tambahkan tombol simpan/batal (sudah ada di HTML, tapi kita pastikan event-nya)
-  saveEditBtn.addEventListener('click', saveEditedReport);
-  cancelEditBtn.addEventListener('click', closeEditModal);
+  // Gunakan onclick untuk menghindari penumpukan event listener
+  saveEditBtn.onclick = saveEditedReport;
+  cancelEditBtn.onclick = closeEditModal;
 }
 
 async function saveEditedReport() {
@@ -428,7 +447,7 @@ async function saveEditedReport() {
     // Reload data
     const tahun = recapYear.value;
     const bulan = recapMonth.value;
-    showRecapScreen();
+    refreshRecapData();
   } else {
     alert('Gagal memperbarui: ' + result.message);
   }
@@ -617,10 +636,10 @@ tabRecapBtn.addEventListener('click', function () {
   showRecapScreen();
 });
 
-// Tambahkan event listener untuk filter rekap
-if (recapYear) recapYear.addEventListener('change', function() { showRecapScreen(); });
-if (recapMonth) recapMonth.addEventListener('change', function() { showRecapScreen(); });
-if (adminRoomSelect) adminRoomSelect.addEventListener('change', function() { showRecapScreen(); });
+// Tambahkan event listener untuk filter rekap (TANPA reset ulang pilihan)
+if (recapYear) recapYear.addEventListener('change', refreshRecapData);
+if (recapMonth) recapMonth.addEventListener('change', refreshRecapData);
+if (adminRoomSelect) adminRoomSelect.addEventListener('change', refreshRecapData);
 
 // Tambahkan event listener untuk export & print
 if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportToExcel);
@@ -650,10 +669,10 @@ function init() {
   adminOpt.textContent = 'ADMIN (Lihat Semua Laporan)';
   roomSelect.appendChild(adminOpt);
 
-  // Load data awal
+  // Load data awal (HANYA SEKALI)
   loadPasswords();
   loadStaff();
-  populateFilters();
+  initFilters(); // Inisialisasi filter tanpa mereset pilihan
 
   // Cek session
   const savedRoom = sessionStorage.getItem('activeRoom');
