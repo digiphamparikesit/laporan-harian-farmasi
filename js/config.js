@@ -8,7 +8,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-
 // ROOM ADMIN (untuk melihat semua laporan)
 const ADMIN_ROOM = 'admin';
 
-// Daftar ruangan untuk rekap (harus sama persis dengan key di ROOMS)
+// Daftar ruangan yang akan ditampilkan di rekap (khusus admin)
 const RECAP_ROOM_LIST = [
   'depo_igd',
   'depo_ibs',
@@ -40,26 +40,22 @@ const MONTHS_ID_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
 
 // =========================================================
 // KONFIGURASI RUANGAN (DEPO FARMASI)
-// PASTIKAN KEY SAMA DENGAN RECAP_ROOM_LIST
 // =========================================================
 const ROOMS = {
   // DEPO FARMASI IGD
   depo_igd: {
     label: 'DEPO FARMASI IGD',
-    password: 'igd123', // Tambahkan password untuk login
+    password: 'igd123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
       { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang', 'Malam'] },
-      
       { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
       { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
-      
       { key: 'JUMLAH_RESEP', label: 'Jumlah Resep', type: 'number' },
       { key: 'RESEP_RACIKAN', label: 'Resep Racikan', type: 'number' },
       { key: 'RESEP_NON_RACIKAN', label: 'Resep Non-Racikan', type: 'number' },
       { key: 'PELAYANAN_INFORMASI', label: 'Pelayanan Informasi', type: 'number' },
-      
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
@@ -72,15 +68,12 @@ const ROOMS = {
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
       { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang', 'Malam'] },
-      
       { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
       { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
-      
       { key: 'JUMLAH_RESEP', label: 'Jumlah Resep', type: 'number' },
       { key: 'RESEP_RACIKAN', label: 'Resep Racikan', type: 'number' },
       { key: 'RESEP_NON_RACIKAN', label: 'Resep Non-Racikan', type: 'number' },
       { key: 'PELAYANAN_INFORMASI', label: 'Pelayanan Informasi', type: 'number' },
-      
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
@@ -93,17 +86,14 @@ const ROOMS = {
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
       { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang', 'Malam'] },
-      
       { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
       { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
       { key: 'PETUGAS_3', label: 'Petugas 3', type: 'staff' },
-      
       { key: 'JUMLAH_RESEP', label: 'Jumlah Resep', type: 'number' },
       { key: 'RESEP_RACIKAN', label: 'Resep Racikan', type: 'number' },
       { key: 'RESEP_NON_RACIKAN', label: 'Resep Non-Racikan', type: 'number' },
       { key: 'PELAYANAN_INFORMASI', label: 'Pelayanan Informasi', type: 'number' },
       { key: 'KONSULTASI', label: 'Konsultasi', type: 'number' },
-      
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
@@ -116,18 +106,15 @@ const ROOMS = {
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
       { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang'] },
-      
       { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
       { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
       { key: 'PETUGAS_3', label: 'Petugas 3', type: 'staff' },
       { key: 'PETUGAS_4', label: 'Petugas 4', type: 'staff' },
-      
       { key: 'JUMLAH_RESEP', label: 'Jumlah Resep', type: 'number' },
       { key: 'RESEP_RACIKAN', label: 'Resep Racikan', type: 'number' },
       { key: 'RESEP_NON_RACIKAN', label: 'Resep Non-Racikan', type: 'number' },
       { key: 'PELAYANAN_INFORMASI', label: 'Pelayanan Informasi', type: 'number' },
       { key: 'KONSULTASI', label: 'Konsultasi', type: 'number' },
-      
       { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
     ]
   },
@@ -140,83 +127,5 @@ const ROOMS = {
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
       { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang'] },
-      
       { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
-      { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
-      
-      { key: 'JUMLAH_RESEP', label: 'Jumlah Resep', type: 'number' },
-      { key: 'RESEP_RACIKAN', label: 'Resep Racikan', type: 'number' },
-      { key: 'RESEP_NON_RACIKAN', label: 'Resep Non-Racikan', type: 'number' },
-      { key: 'PELAYANAN_INFORMASI', label: 'Pelayanan Informasi', type: 'number' },
-      
-      { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
-    ]
-  },
-  
-  // DEPO FARMASI IRIN DAN MATERNITAS
-  depo_irin_maternitas: {
-    label: 'DEPO FARMASI IRIN DAN MATERNITAS',
-    password: 'irin123',
-    staffColumns: 2,
-    fields: [
-      { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
-      { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang', 'Malam'] },
-      
-      { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
-      { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
-      
-      { key: 'JUMLAH_RESEP', label: 'Jumlah Resep', type: 'number' },
-      { key: 'RESEP_RACIKAN', label: 'Resep Racikan', type: 'number' },
-      { key: 'RESEP_NON_RACIKAN', label: 'Resep Non-Racikan', type: 'number' },
-      { key: 'PELAYANAN_INFORMASI', label: 'Pelayanan Informasi', type: 'number' },
-      
-      { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
-    ]
-  },
-  
-  // DEPO FARMASI CATHLAB
-  depo_cathlab: {
-    label: 'DEPO FARMASI CATHLAB',
-    password: 'cath123',
-    staffColumns: 2,
-    fields: [
-      { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
-      { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang'] },
-      
-      { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
-      { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
-      
-      { key: 'JUMLAH_RESEP', label: 'Jumlah Resep', type: 'number' },
-      { key: 'RESEP_RACIKAN', label: 'Resep Racikan', type: 'number' },
-      { key: 'RESEP_NON_RACIKAN', label: 'Resep Non-Racikan', type: 'number' },
-      { key: 'PELAYANAN_INFORMASI', label: 'Pelayanan Informasi', type: 'number' },
-      
-      { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
-    ]
-  },
-  
-  // DEPO FARMASI ONKOLOGI TERPADU
-  depo_onkologi_terpadu: {
-    label: 'DEPO FARMASI ONKOLOGI TERPADU',
-    password: 'onko123',
-    staffColumns: 2,
-    fields: [
-      { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
-      { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang'] },
-      
-      { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
-      { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
-      
-      { key: 'JUMLAH_RESEP', label: 'Jumlah Resep', type: 'number' },
-      { key: 'RESEP_RACIKAN', label: 'Resep Racikan', type: 'number' },
-      { key: 'RESEP_NON_RACIKAN', label: 'Resep Non-Racikan', type: 'number' },
-      { key: 'PELAYANAN_INFORMASI', label: 'Pelayanan Informasi', type: 'number' },
-      { key: 'KEMOTERAPI', label: 'Kemoterapi', type: 'number' },
-      { key: 'TERAPI_TARGET', label: 'Terapi Target', type: 'number' },
-      { key: 'IMUNOTERAPI', label: 'Imunoterapi', type: 'number' },
-      { key: 'HORMONTERAPI', label: 'Hormonterapi', type: 'number' },
-      
-      { key: 'CATATAN', label: 'Catatan / Kendala', type: 'textarea' }
-    ]
-  }
-};
+      { key: 'PETUGAS_2', label: 'Pet
