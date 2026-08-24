@@ -8,7 +8,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-
 // ROOM ADMIN (untuk melihat semua laporan)
 const ADMIN_ROOM = 'admin';
 
-// Daftar ruangan yang akan ditampilkan di rekap (khusus admin)
+// Daftar ruangan untuk rekap (harus sama persis dengan key di ROOMS)
 const RECAP_ROOM_LIST = [
   'depo_igd',
   'depo_ibs',
@@ -20,7 +20,7 @@ const RECAP_ROOM_LIST = [
   'depo_onkologi_terpadu'
 ];
 
-// Warna untuk grafik tren (8 warna berbeda)
+// Warna untuk grafik tren
 const ROOM_COLORS = {
   depo_igd: '#0F6E6A',
   depo_ibs: '#D97706',
@@ -40,11 +40,13 @@ const MONTHS_ID_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
 
 // =========================================================
 // KONFIGURASI RUANGAN (DEPO FARMASI)
+// PASTIKAN KEY SAMA DENGAN RECAP_ROOM_LIST
 // =========================================================
 const ROOMS = {
   // DEPO FARMASI IGD
   depo_igd: {
     label: 'DEPO FARMASI IGD',
+    password: 'igd123', // Tambahkan password untuk login
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -65,6 +67,7 @@ const ROOMS = {
   // DEPO FARMASI IBS
   depo_ibs: {
     label: 'DEPO FARMASI IBS',
+    password: 'ibs123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -85,6 +88,7 @@ const ROOMS = {
   // DEPO FARMASI IRNA 1 dan Paviliun
   depo_irna1_paviliun: {
     label: 'DEPO FARMASI IRNA 1 dan Paviliun',
+    password: 'irna123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -107,6 +111,7 @@ const ROOMS = {
   // DEPO FARMASI RAWAT JALAN
   depo_rawat_jalan: {
     label: 'DEPO FARMASI RAWAT JALAN',
+    password: 'rj123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -130,6 +135,7 @@ const ROOMS = {
   // DEPO FARMASI RAWAT JALAN MATERNITAS
   depo_rawat_jalan_maternitas: {
     label: 'DEPO FARMASI RAWAT JALAN MATERNITAS',
+    password: 'rjm123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -150,6 +156,7 @@ const ROOMS = {
   // DEPO FARMASI IRIN DAN MATERNITAS
   depo_irin_maternitas: {
     label: 'DEPO FARMASI IRIN DAN MATERNITAS',
+    password: 'irin123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -170,6 +177,7 @@ const ROOMS = {
   // DEPO FARMASI CATHLAB
   depo_cathlab: {
     label: 'DEPO FARMASI CATHLAB',
+    password: 'cath123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
@@ -190,6 +198,7 @@ const ROOMS = {
   // DEPO FARMASI ONKOLOGI TERPADU
   depo_onkologi_terpadu: {
     label: 'DEPO FARMASI ONKOLOGI TERPADU',
+    password: 'onko123',
     staffColumns: 2,
     fields: [
       { key: 'tanggal', label: 'Tanggal Laporan', type: 'date' },
