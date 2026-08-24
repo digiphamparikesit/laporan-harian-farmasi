@@ -517,6 +517,57 @@ textarea.input {
   box-shadow: 0 2px 6px rgba(11, 90, 59, 0.25);
 }
 
+/* ===== KALENDER BARU (DAY-CELL) ===== */
+.day-cell {
+  position: relative;
+  min-height: 55px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #e8f5e9;  /* background hijau muda */
+  border: 1px solid #c8e6c9;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.day-cell.has-report {
+  background-color: #a5d6a7;  /* hijau lebih pekat jika ada laporan */
+  cursor: pointer;
+}
+
+.day-number {
+  font-size: 15px;
+  font-weight: bold;
+  color: #1b5e20;
+}
+
+.day-count {
+  font-size: 10px;
+  color: #d32f2f;            /* warna merah */
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+/* ===== MODAL EDIT ===== */
+#editFormContainer {
+  background-color: #e8f5e9; /* background hijau */
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #81c784;
+}
+
+#editReportForm .field-label {
+  color: #1b5e20;
+  font-weight: 600;
+}
+
+#editReportForm .input {
+  background-color: #ffffff;
+  border: 1px solid #81c784;
+  color: #1b5e20;
+}
+
 /* ===== Modal ===== */
 .modal-overlay {
   position: fixed;
