@@ -1,5 +1,5 @@
 // =========================================================
-// STATE & DOM
+// STATE & DOM (Menggunakan let agar aman diinisialisasi ulang)
 // =========================================================
 let staffList = [];
 let currentRoom = null;
@@ -8,49 +8,60 @@ let editingRoom = null;
 let editingReportData = null;
 let roomPasswords = {};
 
-const roomSelect = document.getElementById('roomSelect');
-const passwordInput = document.getElementById('passwordInput');
-const loginBtn = document.getElementById('loginBtn');
-const loginError = document.getElementById('loginError');
-const logoutBtn = document.getElementById('logoutBtn');
-const activeRoomBadge = document.getElementById('activeRoomBadge');
-const formScreen = document.getElementById('formScreen');
-const loginScreen = document.getElementById('loginScreen');
-const recapScreen = document.getElementById('recapScreen');
-const tabNav = document.getElementById('tabNav');
-const tabInputBtn = document.getElementById('tabInputBtn');
-const tabRecapBtn = document.getElementById('tabRecapBtn');
-const submitBtn = document.getElementById('submitBtn');
-const submitMessage = document.getElementById('submitMessage');
-const reportForm = document.getElementById('reportForm');
+// Elemen DOM (diinisialisasi di initElements)
+let roomSelect, passwordInput, loginBtn, loginError, logoutBtn, activeRoomBadge;
+let formScreen, loginScreen, recapScreen, tabNav, tabInputBtn, tabRecapBtn;
+let submitBtn, submitMessage, reportForm;
+let recapYear, recapMonth, adminRoomSelect, adminRoomFilterWrap;
+let exportExcelBtn, printPreviewBtn, statCards, barChart;
+let dailyCalendar, dailyRoomLabel, trendYearLabel, lineChart, lineChartLegend;
+let reportModalOverlay, modalTitle, modalBody, modalCloseBtn, modalActions;
+let editFormContainer, editReportForm, saveEditBtn, cancelEditBtn;
 
-// Elemen Rekap
-const recapYear = document.getElementById('recapYear');
-const recapMonth = document.getElementById('recapMonth');
-const adminRoomSelect = document.getElementById('adminRoomSelect');
-const adminRoomFilterWrap = document.getElementById('adminRoomFilterWrap');
-const exportExcelBtn = document.getElementById('exportExcelBtn');
-const printPreviewBtn = document.getElementById('printPreviewBtn');
-const statCards = document.getElementById('statCards');
-const barChart = document.getElementById('barChart');
-const dailyCalendar = document.getElementById('dailyCalendar');
-const dailyRoomLabel = document.getElementById('dailyRoomLabel');
-const trendYearLabel = document.getElementById('trendYearLabel');
-const lineChart = document.getElementById('lineChart');
-const lineChartLegend = document.getElementById('lineChartLegend');
+// =========================================================
+// INISIALISASI SEMUA ELEMEN (DIPANGGIL DI INIT)
+// =========================================================
+function initElements() {
+  roomSelect = document.getElementById('roomSelect');
+  passwordInput = document.getElementById('passwordInput');
+  loginBtn = document.getElementById('loginBtn');
+  loginError = document.getElementById('loginError');
+  logoutBtn = document.getElementById('logoutBtn');
+  activeRoomBadge = document.getElementById('activeRoomBadge');
+  formScreen = document.getElementById('formScreen');
+  loginScreen = document.getElementById('loginScreen');
+  recapScreen = document.getElementById('recapScreen');
+  tabNav = document.getElementById('tabNav');
+  tabInputBtn = document.getElementById('tabInputBtn');
+  tabRecapBtn = document.getElementById('tabRecapBtn');
+  submitBtn = document.getElementById('submitBtn');
+  submitMessage = document.getElementById('submitMessage');
+  reportForm = document.getElementById('reportForm');
 
-// Elemen Modal (dari HTML)
-const reportModalOverlay = document.getElementById('reportModalOverlay');
-const modalTitle = document.getElementById('modalTitle');
-const modalBody = document.getElementById('modalBody');
-const modalCloseBtn = document.getElementById('modalCloseBtn');
-const modalActions = document.getElementById('modalActions');
-const editReportBtn = document.getElementById('editReportBtn');
-const deleteReportBtn = document.getElementById('deleteReportBtn');
-const editFormContainer = document.getElementById('editFormContainer');
-const editReportForm = document.getElementById('editReportForm');
-const saveEditBtn = document.getElementById('saveEditBtn');
-const cancelEditBtn = document.getElementById('cancelEditBtn');
+  recapYear = document.getElementById('recapYear');
+  recapMonth = document.getElementById('recapMonth');
+  adminRoomSelect = document.getElementById('adminRoomSelect');
+  adminRoomFilterWrap = document.getElementById('adminRoomFilterWrap');
+  exportExcelBtn = document.getElementById('exportExcelBtn');
+  printPreviewBtn = document.getElementById('printPreviewBtn');
+  statCards = document.getElementById('statCards');
+  barChart = document.getElementById('barChart');
+  dailyCalendar = document.getElementById('dailyCalendar');
+  dailyRoomLabel = document.getElementById('dailyRoomLabel');
+  trendYearLabel = document.getElementById('trendYearLabel');
+  lineChart = document.getElementById('lineChart');
+  lineChartLegend = document.getElementById('lineChartLegend');
+
+  reportModalOverlay = document.getElementById('reportModalOverlay');
+  modalTitle = document.getElementById('modalTitle');
+  modalBody = document.getElementById('modalBody');
+  modalCloseBtn = document.getElementById('modalCloseBtn');
+  modalActions = document.getElementById('modalActions');
+  editFormContainer = document.getElementById('editFormContainer');
+  editReportForm = document.getElementById('editReportForm');
+  saveEditBtn = document.getElementById('saveEditBtn');
+  cancelEditBtn = document.getElementById('cancelEditBtn');
+}
 
 // =========================================================
 // HELPER
@@ -63,7 +74,6 @@ function showLoading(isLoading) {
 async function callApi(payload) {
   showLoading(true);
   try {
-    console.log('📡 CALL API:', payload.action);
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -71,10 +81,9 @@ async function callApi(payload) {
     });
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     const result = await res.json();
-    console.log('✅ API Response:', result);
     return result;
   } catch (err) {
-    console.error('❌ API Call Error:', err);
+    console.error('API Error:', err);
     return { success: false, message: 'Gagal menghubungi server: ' + err.message };
   } finally {
     showLoading(false);
@@ -103,7 +112,7 @@ function isValidRoom(roomKey) {
 
 function renderForm(roomKey) {
   const room = ROOMS[roomKey];
-  if (!room) return;
+  if (!room || !reportForm) return;
 
   reportForm.innerHTML = '';
   room.fields.forEach(field => {
@@ -161,85 +170,41 @@ function renderForm(roomKey) {
 }
 
 function showFormScreen() {
-  if (!loginScreen || !formScreen || !recapScreen) return;
+  if (!loginScreen || !formScreen) return;
 
   loginScreen.classList.add('hidden');
-  logoutBtn.classList.remove('hidden');
+  if (logoutBtn) logoutBtn.classList.remove('hidden');
   if (tabNav) tabNav.classList.remove('hidden');
 
   // Tampilkan filter ruangan khusus ADMIN
-  if (currentRoom === ADMIN_ROOM) {
-    if (adminRoomFilterWrap) adminRoomFilterWrap.classList.remove('hidden');
-  } else {
-    if (adminRoomFilterWrap) adminRoomFilterWrap.classList.add('hidden');
+  if (currentRoom === ADMIN_ROOM && adminRoomFilterWrap) {
+    adminRoomFilterWrap.classList.remove('hidden');
+  } else if (adminRoomFilterWrap) {
+    adminRoomFilterWrap.classList.add('hidden');
   }
 
   if (currentRoom && currentRoom !== ADMIN_ROOM) {
-    // USER BIASA
     formScreen.classList.remove('hidden');
-    recapScreen.classList.add('hidden');
-    tabInputBtn.classList.add('active');
-    tabRecapBtn.classList.remove('active');
-    activeRoomBadge.textContent = ROOMS[currentRoom].label;
-    activeRoomBadge.classList.remove('hidden');
+    if (recapScreen) recapScreen.classList.add('hidden');
+    if (tabInputBtn) tabInputBtn.classList.add('active');
+    if (tabRecapBtn) tabRecapBtn.classList.remove('active');
+    if (activeRoomBadge) {
+      activeRoomBadge.textContent = ROOMS[currentRoom].label;
+      activeRoomBadge.classList.remove('hidden');
+    }
     renderForm(currentRoom);
   } else {
-    // ADMIN
-    formScreen.classList.add('hidden');
-    recapScreen.classList.remove('hidden');
-    tabRecapBtn.classList.add('active');
-    tabInputBtn.classList.remove('active');
-    activeRoomBadge.textContent = 'ADMIN';
-    activeRoomBadge.classList.remove('hidden');
+    if (formScreen) formScreen.classList.add('hidden');
+    if (recapScreen) recapScreen.classList.remove('hidden');
+    if (tabRecapBtn) tabRecapBtn.classList.add('active');
+    if (tabInputBtn) tabInputBtn.classList.remove('active');
+    if (activeRoomBadge) {
+      activeRoomBadge.textContent = 'ADMIN';
+      activeRoomBadge.classList.remove('hidden');
+    }
     showRecapScreen();
   }
 }
-
-// =========================================================
-// SUBMIT LAPORAN BARU (DITAMBAHKAN)
-// =========================================================
-submitBtn.addEventListener('click', async function () {
-  if (!currentRoom || currentRoom === ADMIN_ROOM) {
-    alert('Anda harus login sebagai ruangan terlebih dahulu untuk input laporan.');
-    return;
-  }
-
-  const formData = new FormData(reportForm);
-  const data = {};
-  formData.forEach((value, key) => {
-    data[key] = value;
-  });
-
-  // Validasi tanggal wajib diisi
-  const tanggalField = Object.keys(ROOMS[currentRoom].fields).find(k => ROOMS[currentRoom].fields[k].type === 'date');
-  if (tanggalField && !data[tanggalField]) {
-    alert('Tanggal wajib diisi!');
-    return;
-  }
-
-  // Konversi tanggal dari yyyy-mm-dd ke dd/mm/yyyy untuk backend
-  if (data.tanggal) {
-    const parts = data.tanggal.split('-');
-    if (parts.length === 3) {
-      data.tanggal = `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-  }
-
-  showLoading(true);
-  try {
-    const result = await callApi({ action: 'submitReport', room: currentRoom, data: data });
-    if (result.success) {
-      alert('Laporan berhasil disimpan!');
-      reportForm.reset();
-    } else {
-      alert('Gagal menyimpan: ' + result.message);
-    }
-  } catch (err) {
-    alert('Error: ' + err.message);
-  } finally {
-    showLoading(false);
-  }
-});
 
 // =========================================================
 // FILTER & RECAP LOGIC
@@ -272,32 +237,29 @@ function initFilters() {
       opt.textContent = ROOMS[roomKey].label;
       adminRoomSelect.appendChild(opt);
     });
-    // Set default ke ruangan pertama
-    if (Object.keys(ROOMS).length > 0) {
-      adminRoomSelect.value = Object.keys(ROOMS)[0];
-    }
+    if (Object.keys(ROOMS).length > 0) adminRoomSelect.value = Object.keys(ROOMS)[0];
   }
 }
 
 function refreshRecapData() {
+  if (!recapYear || !recapMonth) return;
   const tahun = recapYear.value;
   const bulan = recapMonth.value;
 
   if (currentRoom && currentRoom !== ADMIN_ROOM && bulan) {
-    dailyRoomLabel.textContent = ROOMS[currentRoom].label;
+    if (dailyRoomLabel) dailyRoomLabel.textContent = ROOMS[currentRoom].label;
     loadDailyCalendar(currentRoom, bulan, tahun);
-  } else if (currentRoom === ADMIN_ROOM && adminRoomSelect.value && bulan) {
-    dailyRoomLabel.textContent = ROOMS[adminRoomSelect.value].label;
+  } else if (currentRoom === ADMIN_ROOM && adminRoomSelect && adminRoomSelect.value && bulan) {
+    if (dailyRoomLabel) dailyRoomLabel.textContent = ROOMS[adminRoomSelect.value].label;
     loadDailyCalendar(adminRoomSelect.value, bulan, tahun);
   } else {
-    dailyCalendar.innerHTML = '<p style="padding:20px;text-align:center;">Pilih bulan untuk melihat kelengkapan laporan.</p>';
+    if (dailyCalendar) dailyCalendar.innerHTML = '<p style="padding:20px;text-align:center;">Pilih bulan untuk melihat kelengkapan laporan.</p>';
   }
 
   loadRecapData(tahun, bulan);
 }
 
 function showRecapScreen() {
-  console.log('📊 Menampilkan layar rekap');
   refreshRecapData();
 }
 
@@ -306,28 +268,22 @@ function showRecapScreen() {
 // =========================================================
 async function loadDailyCalendar(room, bulan, tahun) {
   const result = await callApi({ action: 'getDailyStatus', room: room, bulan: bulan, tahun: tahun });
-  if (result.success) {
+  if (result.success && dailyCalendar) {
     dailyCalendar.innerHTML = '';
     for (let day = 1; day <= result.daysInMonth; day++) {
       const hasReport = result.data[day] > 0;
       const count = result.data[day];
-
       const cell = document.createElement('div');
       cell.className = 'day-cell' + (hasReport ? ' has-report' : ' missing');
-
       const dayNum = document.createElement('div');
       dayNum.className = 'day-number';
       dayNum.textContent = day;
       cell.appendChild(dayNum);
-
       if (hasReport) {
         const countLabel = document.createElement('div');
         countLabel.className = 'day-count';
         countLabel.textContent = count;
         cell.appendChild(countLabel);
-      }
-
-      if (hasReport) {
         cell.style.cursor = 'pointer';
         cell.addEventListener('click', function() {
           showDayReports(room, day, bulan, tahun);
@@ -342,11 +298,11 @@ async function loadDailyCalendar(room, bulan, tahun) {
 // LOAD DATA REKAP & GRAFIK
 // =========================================================
 async function loadRecapData(tahun, bulan) {
-  const room = (currentRoom === ADMIN_ROOM && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
+  const room = (currentRoom === ADMIN_ROOM && adminRoomSelect && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
   if (!room) return;
 
   const result = await callApi({ action: 'getRecap', room: room, bulan: bulan, tahun: tahun });
-  if (result.success) {
+  if (result.success && statCards) {
     statCards.innerHTML = '';
     for (const [key, value] of Object.entries(result.data)) {
       const card = document.createElement('div');
@@ -354,12 +310,12 @@ async function loadRecapData(tahun, bulan) {
       card.innerHTML = `<div class="stat-value">${value}</div><div class="stat-label">${key}</div>`;
       statCards.appendChild(card);
     }
-    drawBarChart(Object.keys(result.data), Object.values(result.data));
+    if (barChart) drawBarChart(Object.keys(result.data), Object.values(result.data));
   }
 
   if (currentRoom === ADMIN_ROOM) {
     const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
-    if (trendResult.success) {
+    if (trendResult.success && lineChart) {
       let datasets = [];
       for (const [roomKey, monthlyData] of Object.entries(trendResult.data)) {
         datasets.push({
@@ -447,22 +403,22 @@ function drawLineChart(datasets, labels) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN (DENGAN GUARD NULL)
+// MODAL DETAIL & EDIT LAPORAN (DIJAMIN AMAN)
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
-  if (!reportModalOverlay || !modalTitle || !modalBody || !modalActions || !editFormContainer) {
-    console.error('❌ Elemen modal tidak ditemukan! Periksa ID di HTML.');
+  const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
+  if (!result.success) { alert('Gagal memuat data: ' + result.message); return; }
+
+  if (!reportModalOverlay || !modalTitle || !modalBody || !editFormContainer) {
+    console.error('❌ Elemen modal tidak ditemukan!');
     alert('Terjadi kesalahan pada tampilan modal. Muat ulang halaman.');
     return;
   }
 
-  const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
-  if (!result.success) { alert('Gagal memuat data: ' + result.message); return; }
-
   reportModalOverlay.classList.remove('hidden');
   modalTitle.textContent = `Laporan Tanggal ${tanggal}/${bulan}/${tahun}`;
   modalBody.innerHTML = '';
-  modalActions.classList.add('hidden');
+  if (modalActions) modalActions.classList.add('hidden');
   editFormContainer.classList.add('hidden');
   
   if (result.reports.length === 0) { modalBody.innerHTML = '<p>Tidak ada laporan untuk tanggal ini.</p>'; return; }
@@ -493,13 +449,13 @@ function convertDateForInput(dateStr) {
 }
 
 function openEditModal(report) {
-  if (!reportModalOverlay || !modalBody || !editFormContainer || !editReportForm || !saveEditBtn || !cancelEditBtn) {
+  if (!editFormContainer || !editReportForm || !saveEditBtn || !cancelEditBtn) {
     alert('Elemen modal tidak ditemukan. Muat ulang halaman.');
     return;
   }
 
-  modalBody.classList.add('hidden');
-  modalActions.classList.add('hidden');
+  if (modalBody) modalBody.classList.add('hidden');
+  if (modalActions) modalActions.classList.add('hidden');
   editFormContainer.classList.remove('hidden');
 
   editingReportData = report;
@@ -507,7 +463,7 @@ function openEditModal(report) {
   editingReportId = report._row;
 
   editReportForm.innerHTML = '';
-  const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect.value];
+  const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect ? adminRoomSelect.value : ''];
   if (!room) { alert('Konfigurasi ruangan tidak ditemukan!'); return; }
 
   function getValueFromReport(fieldKey) {
@@ -523,7 +479,6 @@ function openEditModal(report) {
       var cleanKey = key.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
       if (cleanKey === searchKey || cleanKey.includes(searchKey)) return report[key];
     }
-    
     var parts = searchKey.split('_');
     if (parts.length > 1) {
       for (var key2 in report) {
@@ -599,6 +554,7 @@ function openEditModal(report) {
     editReportForm.appendChild(input);
   });
 
+  // Event listener untuk tombol simpan dan batal (di-assign ulang setiap kali modal dibuka)
   saveEditBtn.onclick = saveEditedReport;
   cancelEditBtn.onclick = closeEditModal;
 }
@@ -634,9 +590,10 @@ function closeEditModal() {
 // EXPORT EXCEL & CETAK PREVIEW
 // =========================================================
 async function exportToExcel() {
-  const room = (currentRoom === ADMIN_ROOM && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
+  const room = (currentRoom === ADMIN_ROOM && adminRoomSelect && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
   if (!room) { alert('Pilih ruangan terlebih dahulu!'); return; }
-  const tahun = recapYear.value; const bulan = recapMonth.value;
+  const tahun = recapYear ? recapYear.value : '';
+  const bulan = recapMonth ? recapMonth.value : '';
   const result = await callApi({ action: 'getFullReport', room: room, bulan: bulan, tahun: tahun });
   if (!result.success || !result.data || result.data.length === 0) { alert('Tidak ada data untuk diekspor.'); return; }
   const headers = ['Tanggal', 'Shift'];
@@ -657,9 +614,10 @@ async function exportToExcel() {
 }
 
 async function printPreview() {
-  const room = (currentRoom === ADMIN_ROOM && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
+  const room = (currentRoom === ADMIN_ROOM && adminRoomSelect && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
   if (!room) { alert('Pilih ruangan terlebih dahulu!'); return; }
-  const tahun = recapYear.value; const bulan = recapMonth.value;
+  const tahun = recapYear ? recapYear.value : '';
+  const bulan = recapMonth ? recapMonth.value : '';
   const result = await callApi({ action: 'getMonthlyReports', room: room, bulan: bulan, tahun: tahun });
   if (!result.success || !result.reports || result.reports.length === 0) { alert('Tidak ada data untuk dicetak.'); return; }
   const printWindow = window.open('', '_blank');
@@ -680,7 +638,7 @@ async function printPreview() {
 }
 
 // =========================================================
-// LOGOUT & EVENTS
+// LOGOUT & EVENTS (ATTACH DI INIT)
 // =========================================================
 function handleLogout() {
   currentRoom = null;
@@ -691,62 +649,73 @@ function handleLogout() {
   if (logoutBtn) logoutBtn.classList.add('hidden');
   if (activeRoomBadge) activeRoomBadge.classList.add('hidden');
   if (tabNav) tabNav.classList.add('hidden');
-  if (passwordInput) passwordInput.value = '';
   if (adminRoomFilterWrap) adminRoomFilterWrap.classList.add('hidden');
+  if (passwordInput) passwordInput.value = '';
 }
 
-loginBtn.addEventListener('click', async function () {
-  const room = roomSelect.value;
-  const password = passwordInput.value.trim();
-  if (loginError) loginError.classList.add('hidden');
-  if (!password) { if (loginError) { loginError.textContent = 'Password wajib diisi.'; loginError.classList.remove('hidden'); } return; }
-  if (room !== ADMIN_ROOM && !ROOMS[room]) { if (loginError) { loginError.textContent = 'Ruangan tidak ditemukan.'; loginError.classList.remove('hidden'); } return; }
-  if (Object.keys(roomPasswords).length === 0) await loadPasswords();
-  const correctPassword = roomPasswords[room];
-  if (correctPassword && password === correctPassword) {
-    currentRoom = room; sessionStorage.setItem('activeRoom', room); showFormScreen();
-  } else {
-    const result = await callApi({ action: 'login', room: room, password: password });
-    if (result.success) {
-      currentRoom = room; sessionStorage.setItem('activeRoom', room); showFormScreen();
-    } else {
-      if (loginError) { loginError.textContent = result.message || 'Password salah.'; loginError.classList.remove('hidden'); }
-    }
+function attachEvents() {
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async function () {
+      const room = roomSelect ? roomSelect.value : '';
+      const password = passwordInput ? passwordInput.value.trim() : '';
+      if (loginError) loginError.classList.add('hidden');
+      if (!password) { if (loginError) { loginError.textContent = 'Password wajib diisi.'; loginError.classList.remove('hidden'); } return; }
+      if (room !== ADMIN_ROOM && !ROOMS[room]) { if (loginError) { loginError.textContent = 'Ruangan tidak ditemukan.'; loginError.classList.remove('hidden'); } return; }
+      if (Object.keys(roomPasswords).length === 0) await loadPasswords();
+      const correctPassword = roomPasswords[room];
+      if (correctPassword && password === correctPassword) {
+        currentRoom = room; sessionStorage.setItem('activeRoom', room); showFormScreen();
+      } else {
+        const result = await callApi({ action: 'login', room: room, password: password });
+        if (result.success) {
+          currentRoom = room; sessionStorage.setItem('activeRoom', room); showFormScreen();
+        } else {
+          if (loginError) { loginError.textContent = result.message || 'Password salah.'; loginError.classList.remove('hidden'); }
+        }
+      }
+    });
   }
-});
 
-logoutBtn.addEventListener('click', handleLogout);
+  if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
-tabInputBtn.addEventListener('click', function () {
-  if (currentRoom && currentRoom !== ADMIN_ROOM) {
-    if (formScreen) formScreen.classList.remove('hidden');
-    if (recapScreen) recapScreen.classList.add('hidden');
-    tabInputBtn.classList.add('active'); tabRecapBtn.classList.remove('active');
+  if (tabInputBtn) {
+    tabInputBtn.addEventListener('click', function () {
+      if (currentRoom && currentRoom !== ADMIN_ROOM) {
+        if (formScreen) formScreen.classList.remove('hidden');
+        if (recapScreen) recapScreen.classList.add('hidden');
+        tabInputBtn.classList.add('active'); if (tabRecapBtn) tabRecapBtn.classList.remove('active');
+      }
+    });
   }
-});
 
-tabRecapBtn.addEventListener('click', function () {
-  if (recapScreen) recapScreen.classList.remove('hidden');
-  if (formScreen) formScreen.classList.add('hidden');
-  tabRecapBtn.classList.add('active'); tabInputBtn.classList.remove('active');
-  showRecapScreen();
-});
+  if (tabRecapBtn) {
+    tabRecapBtn.addEventListener('click', function () {
+      if (recapScreen) recapScreen.classList.remove('hidden');
+      if (formScreen) formScreen.classList.add('hidden');
+      tabRecapBtn.classList.add('active'); if (tabInputBtn) tabInputBtn.classList.remove('active');
+      showRecapScreen();
+    });
+  }
 
-if (recapYear) recapYear.addEventListener('change', refreshRecapData);
-if (recapMonth) recapMonth.addEventListener('change', refreshRecapData);
-if (adminRoomSelect) adminRoomSelect.addEventListener('change', refreshRecapData);
-if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportToExcel);
-if (printPreviewBtn) printPreviewBtn.addEventListener('click', printPreview);
-if (modalCloseBtn) modalCloseBtn.addEventListener('click', function() {
-  if (reportModalOverlay) reportModalOverlay.classList.add('hidden');
-  if (modalBody) modalBody.classList.remove('hidden');
-  if (editFormContainer) editFormContainer.classList.add('hidden');
-});
+  if (recapYear) recapYear.addEventListener('change', refreshRecapData);
+  if (recapMonth) recapMonth.addEventListener('change', refreshRecapData);
+  if (adminRoomSelect) adminRoomSelect.addEventListener('change', refreshRecapData);
+  if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportToExcel);
+  if (printPreviewBtn) printPreviewBtn.addEventListener('click', printPreview);
+  if (modalCloseBtn) modalCloseBtn.addEventListener('click', function() {
+    if (reportModalOverlay) reportModalOverlay.classList.add('hidden');
+    if (modalBody) modalBody.classList.remove('hidden');
+    if (editFormContainer) editFormContainer.classList.add('hidden');
+  });
+}
 
 // =========================================================
 // INIT
 // =========================================================
 function init() {
+  initElements(); // Panggil untuk mengambil semua elemen
+  attachEvents(); // Panggil untuk attach event listener
+
   if (!roomSelect) { console.error('❌ Elemen #roomSelect tidak ditemukan!'); return; }
   roomSelect.innerHTML = '';
   Object.keys(ROOMS).forEach(roomKey => {
