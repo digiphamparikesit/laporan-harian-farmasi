@@ -98,7 +98,53 @@ async function loadPasswords() {
 }
 
 // =========================================================
-// FUNGSI VALIDASI RUANGAN (dari config.js)
+// AMBIL DAFTAR STAFF DARI SERVER (BARU)
+// =========================================================
+async function loadStaff() {
+  const result = await callApi({ action: 'getStaff' });
+  if (result.success) {
+    staffList = result.staff;
+    console.log('✅ Staff loaded:', staffList.length);
+    // Jika sedang di form, render ulang agar staff muncul
+    if (currentRoom && currentRoom !== ADMIN_ROOM) {
+      renderForm(currentRoom);
+    }
+  } else {
+    console.error('❌ Gagal load staff:', result.message);
+  }
+}
+
+// =========================================================
+// ISI DROPDOWN TAHUN & BULAN DI REKAP (BARU)
+// =========================================================
+function populateFilters() {
+  const recapYear = document.getElementById('recapYear');
+  const recapMonth = document.getElementById('recapMonth');
+
+  if (recapYear) {
+    recapYear.innerHTML = '';
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= currentYear - 5; y--) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      recapYear.appendChild(opt);
+    }
+  }
+
+  if (recapMonth) {
+    recapMonth.innerHTML = '<option value="">Semua Bulan</option>';
+    MONTHS_ID.forEach((month, index) => {
+      const opt = document.createElement('option');
+      opt.value = index + 1;
+      opt.textContent = month;
+      recapMonth.appendChild(opt);
+    });
+  }
+}
+
+// =========================================================
+// FUNGSI VALIDASI RUANGAN
 // =========================================================
 function isValidRoom(roomKey) {
   if (!roomKey) return false;
@@ -110,14 +156,10 @@ function isValidRoom(roomKey) {
 // TAMPILKAN FORM (SETELAH LOGIN BERHASIL)
 // =========================================================
 function showFormScreen() {
-  // Sembunyikan layar login
   loginScreen.classList.add('hidden');
-  // Tampilkan form
   formScreen.classList.remove('hidden');
-  // Sembunyikan layar rekap
   recapScreen.classList.add('hidden');
   
-  // Tampilkan badge ruangan aktif
   if (currentRoom && currentRoom !== ADMIN_ROOM) {
     activeRoomBadge.textContent = ROOMS[currentRoom].label;
     activeRoomBadge.classList.remove('hidden');
@@ -126,13 +168,10 @@ function showFormScreen() {
     activeRoomBadge.classList.remove('hidden');
   }
   
-  // Tampilkan tombol logout
   logoutBtn.classList.remove('hidden');
   
-  // Tampilkan tab navigasi
   if (tabNav) tabNav.classList.remove('hidden');
 
-  // Jika ruangan biasa, tampilkan form input
   if (currentRoom && currentRoom !== ADMIN_ROOM) {
     tabInputBtn.classList.add('active');
     tabRecapBtn.classList.remove('active');
@@ -140,7 +179,6 @@ function showFormScreen() {
     recapScreen.classList.add('hidden');
     renderForm(currentRoom);
   } else {
-    // Jika admin, tampilkan rekap
     tabRecapBtn.classList.add('active');
     tabInputBtn.classList.remove('active');
     formScreen.classList.add('hidden');
@@ -148,7 +186,6 @@ function showFormScreen() {
     showRecapScreen();
   }
 
-  // Set judul form
   const formTitle = document.getElementById('formTitle');
   if (formTitle) {
     formTitle.textContent = ROOMS[currentRoom] ? ROOMS[currentRoom].label : 'Input Laporan';
@@ -158,16 +195,14 @@ function showFormScreen() {
 }
 
 // =========================================================
-// RENDER FORM (PLACEHOLDER - SESUAIKAN DENGAN KEBUTUHAN)
+// RENDER FORM
 // =========================================================
 function renderForm(roomKey) {
   const room = ROOMS[roomKey];
   if (!room) return;
 
-  // Kosongkan form
   reportForm.innerHTML = '';
 
-  // Buat field sesuai konfigurasi ROOMS
   room.fields.forEach(function (field) {
     const label = document.createElement('label');
     label.className = 'field-label';
@@ -219,20 +254,16 @@ function renderForm(roomKey) {
 
     reportForm.appendChild(input);
   });
-
-  // Tambahkan tombol submit (jika belum ada)
-  if (!submitBtn.parentNode) {
-    // submitBtn sudah ada di HTML, tidak perlu ditambahkan lagi
-  }
 }
 
 // =========================================================
-// TAMPILKAN REKAP (PLACEHOLDER)
+// TAMPILKAN REKAP
 // =========================================================
 function showRecapScreen() {
-  // Logika untuk menampilkan rekap - sesuaikan dengan kebutuhan
   console.log('📊 Menampilkan layar rekap');
-  // Anda bisa menambahkan pemanggilan API getYearlyTrend, dll di sini
+  // Pastikan filter terisi
+  populateFilters();
+  // Di sini Anda bisa menambahkan logika pemanggilan API getYearlyTrend, dll
 }
 
 // =========================================================
@@ -259,41 +290,33 @@ loginBtn.addEventListener('click', async function () {
   const password = passwordInput.value.trim();
   loginError.classList.add('hidden');
 
-  console.log('🔑 Login attempt - Room:', room);
-
   if (!password) {
     loginError.textContent = 'Password wajib diisi.';
     loginError.classList.remove('hidden');
     return;
   }
 
-  // VALIDASI: cek ruangan
   if (room !== ADMIN_ROOM && !ROOMS[room]) {
     loginError.textContent = 'Ruangan tidak ditemukan.';
     loginError.classList.remove('hidden');
     return;
   }
 
-  // Pastikan password sudah di-load
   if (Object.keys(roomPasswords).length === 0) {
     await loadPasswords();
   }
 
-  // Cek password dari cache
   const correctPassword = roomPasswords[room];
-  console.log('🔑 Password untuk', room, ':', correctPassword ? 'ada' : 'tidak ada');
 
   if (correctPassword && password === correctPassword) {
     currentRoom = room;
     sessionStorage.setItem('activeRoom', room);
     passwordInput.value = '';
     loginError.classList.add('hidden');
-    console.log('✅ Login berhasil:', room);
     showFormScreen();
     return;
   }
 
-  // Jika password tidak cocok, coba ke server sebagai fallback
   const result = await callApi({ action: 'login', room: room, password: password });
 
   if (result.success) {
@@ -310,7 +333,6 @@ loginBtn.addEventListener('click', async function () {
 
 logoutBtn.addEventListener('click', handleLogout);
 
-// Tab navigasi sederhana
 if (tabInputBtn) {
   tabInputBtn.addEventListener('click', function () {
     if (currentRoom && currentRoom !== ADMIN_ROOM) {
@@ -324,7 +346,6 @@ if (tabInputBtn) {
 
 if (tabRecapBtn) {
   tabRecapBtn.addEventListener('click', function () {
-    // Jika admin atau user biasa, tampilkan rekap
     recapScreen.classList.remove('hidden');
     formScreen.classList.add('hidden');
     tabRecapBtn.classList.add('active');
@@ -339,16 +360,13 @@ if (tabRecapBtn) {
 function init() {
   console.log('🚀 INIT: Memulai aplikasi...');
   
-  // Pastikan roomSelect ada
   if (!roomSelect) {
     console.error('❌ Elemen #roomSelect tidak ditemukan!');
     return;
   }
   
-  // Kosongkan dropdown terlebih dahulu (jika ada isi lama)
   roomSelect.innerHTML = '';
   
-  // Populate room select dari ROOMS
   Object.keys(ROOMS).forEach(function (roomKey) {
     const opt = document.createElement('option');
     opt.value = roomKey;
@@ -356,16 +374,16 @@ function init() {
     roomSelect.appendChild(opt);
   });
 
-  // Tambahkan opsi ADMIN
   const adminOpt = document.createElement('option');
   adminOpt.value = ADMIN_ROOM;
   adminOpt.textContent = 'ADMIN (Lihat Semua Laporan)';
   roomSelect.appendChild(adminOpt);
 
-  // Load passwords dari server
+  // Load passwords, staff, dan filter
   loadPasswords();
+  loadStaff();
+  populateFilters();
 
-  // Cek session
   const savedRoom = sessionStorage.getItem('activeRoom');
   if (savedRoom && isValidRoom(savedRoom)) {
     currentRoom = savedRoom;
