@@ -181,11 +181,9 @@ function showFormScreen() {
 }
 
 // =========================================================
-// FILTER & RECAP LOGIC (DIPERBAIKI)
+// FILTER & RECAP LOGIC
 // =========================================================
-// Fungsi ini HANYA dipanggil SEKALI saat init, agar tidak mereset pilihan user
 function initFilters() {
-  // Isi Tahun
   if (recapYear) {
     recapYear.innerHTML = '';
     const currentYear = new Date().getFullYear();
@@ -197,7 +195,6 @@ function initFilters() {
     }
   }
 
-  // Isi Bulan
   if (recapMonth) {
     recapMonth.innerHTML = '<option value="">Semua Bulan</option>';
     MONTHS_ID.forEach((month, i) => {
@@ -208,7 +205,6 @@ function initFilters() {
     });
   }
 
-  // Isi Dropdown Ruangan (Khusus Admin)
   if (adminRoomSelect) {
     adminRoomSelect.innerHTML = '';
     Object.keys(ROOMS).forEach(roomKey => {
@@ -220,7 +216,6 @@ function initFilters() {
   }
 }
 
-// Fungsi ini dipanggil setiap kali filter berubah / layar rekap dibuka
 function refreshRecapData() {
   const tahun = recapYear.value;
   const bulan = recapMonth.value;
@@ -240,22 +235,39 @@ function refreshRecapData() {
   loadRecapData(tahun, bulan);
 }
 
-// Fungsi showRecapScreen hanya menampilkan elemen (tanpa mereset filter)
 function showRecapScreen() {
   console.log('📊 Menampilkan layar rekap');
   refreshRecapData();
 }
 
+// =========================================================
+// KALENDER DENGAN JUMLAH LAPORAN
+// =========================================================
 async function loadDailyCalendar(room, bulan, tahun) {
   const result = await callApi({ action: 'getDailyStatus', room: room, bulan: bulan, tahun: tahun });
   if (result.success) {
     dailyCalendar.innerHTML = '';
     for (let day = 1; day <= result.daysInMonth; day++) {
-      const cell = document.createElement('div');
       const hasReport = result.data[day] > 0;
+      const count = result.data[day];
+
+      const cell = document.createElement('div');
       cell.className = 'day-cell' + (hasReport ? ' has-report' : ' missing');
-      cell.textContent = day;
-      
+
+      // Tanggal
+      const dayNum = document.createElement('div');
+      dayNum.className = 'day-number';
+      dayNum.textContent = day;
+      cell.appendChild(dayNum);
+
+      // Jumlah laporan (jika ada)
+      if (hasReport) {
+        const countLabel = document.createElement('div');
+        countLabel.className = 'day-count';
+        countLabel.textContent = count; // misal: 3
+        cell.appendChild(countLabel);
+      }
+
       // Jika ada laporan, tambahkan event click untuk melihat detail
       if (hasReport) {
         cell.style.cursor = 'pointer';
@@ -263,12 +275,15 @@ async function loadDailyCalendar(room, bulan, tahun) {
           showDayReports(room, day, bulan, tahun);
         });
       }
-      
+
       dailyCalendar.appendChild(cell);
     }
   }
 }
 
+// =========================================================
+// LOAD DATA REKAP & GRAFIK
+// =========================================================
 async function loadRecapData(tahun, bulan) {
   // Ambil data rekap (untuk stat cards)
   const room = (currentRoom === ADMIN_ROOM && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
@@ -286,25 +301,137 @@ async function loadRecapData(tahun, bulan) {
     }
   }
 
-  // Ambil data tahunan untuk grafik (jika admin)
-  if (currentRoom === ADMIN_ROOM) {
-    const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
-    if (trendResult.success) {
-      // Render Grafik Garis Sederhana
-      lineChart.innerHTML = '';
-      lineChartLegend.innerHTML = '';
-      for (const [roomKey, data] of Object.entries(trendResult.data)) {
-        const div = document.createElement('div');
-        div.textContent = ROOMS[roomKey]?.label || roomKey;
-        lineChartLegend.appendChild(div);
-        // (Logika rendering grafik garis dengan CSS/Chart.js bisa ditambahkan di sini)
+  // Ambil data tahunan untuk grafik garis
+  const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
+  if (trendResult.success) {
+    // Jika admin, tampilkan semua ruangan. Jika user, tampilkan ruangan tersebut saja.
+    let datasets = [];
+    if (currentRoom === ADMIN_ROOM) {
+      // Semua ruangan
+      for (const [roomKey, monthlyData] of Object.entries(trendResult.data)) {
+        datasets.push({
+          label: ROOMS[roomKey]?.label || roomKey,
+          data: monthlyData,
+          color: ROOM_COLORS[roomKey] || '#000'
+        });
       }
+    } else {
+      // Hanya ruangan aktif
+      const roomKey = currentRoom;
+      datasets.push({
+        label: ROOMS[roomKey]?.label || roomKey,
+        data: trendResult.data[roomKey] || [0,0,0,0,0,0,0,0,0,0,0,0],
+        color: ROOM_COLORS[roomKey] || '#000'
+      });
     }
+
+    // Gambar grafik garis
+    drawLineChart(datasets, MONTHS_ID_SHORT);
   }
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN (DIPERBAIKI)
+// FUNGSI GAMBAR GRAFIK GARIS (Canvas Murni)
+// =========================================================
+function drawLineChart(datasets, labels) {
+  // Pastikan elemen lineChart tersedia
+  if (!lineChart) return;
+
+  // Hapus konten lama dan buat canvas baru
+  lineChart.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.id = 'lineChartCanvas';
+  canvas.style.width = '100%';
+  canvas.style.height = '300px';
+  lineChart.appendChild(canvas);
+
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width = canvas.offsetWidth;
+  const height = canvas.height = canvas.offsetHeight;
+
+  // Padding untuk area grafik
+  const padding = { top: 30, right: 30, bottom: 40, left: 50 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  // Hitung nilai maksimum dari semua data untuk skala Y
+  let maxVal = 0;
+  datasets.forEach(ds => {
+    ds.data.forEach(val => {
+      if (val > maxVal) maxVal = val;
+    });
+  });
+  if (maxVal === 0) maxVal = 10; // agar tidak kosong
+
+  // Gambar sumbu Y
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, height - padding.bottom);
+  ctx.stroke();
+
+  // Gambar garis grid horizontal
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++) {
+    const y = padding.top + (chartHeight / yTicks) * i;
+    const value = maxVal - (maxVal / yTicks) * i;
+    ctx.strokeStyle = '#eee';
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+
+    // Label Y
+    ctx.fillStyle = '#666';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(value), padding.left - 10, y + 4);
+  }
+
+  // Gambar sumbu X
+  ctx.strokeStyle = '#ccc';
+  ctx.beginPath();
+  ctx.moveTo(padding.left, height - padding.bottom);
+  ctx.lineTo(width - padding.right, height - padding.bottom);
+  ctx.stroke();
+
+  // Label X
+  ctx.fillStyle = '#666';
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  labels.forEach((label, i) => {
+    const x = padding.left + (chartWidth / (labels.length - 1)) * i;
+    ctx.fillText(label, x, height - padding.bottom + 20);
+  });
+
+  // Gambar garis untuk setiap dataset
+  datasets.forEach(ds => {
+    ctx.strokeStyle = ds.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ds.data.forEach((val, i) => {
+      const x = padding.left + (chartWidth / (ds.data.length - 1)) * i;
+      const y = padding.top + chartHeight - (val / maxVal) * chartHeight;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Gambar titik
+    ds.data.forEach((val, i) => {
+      const x = padding.left + (chartWidth / (ds.data.length - 1)) * i;
+      const y = padding.top + chartHeight - (val / maxVal) * chartHeight;
+      ctx.fillStyle = ds.color;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+  });
+}
+
+// =========================================================
+// MODAL DETAIL & EDIT LAPORAN
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
@@ -313,7 +440,6 @@ async function showDayReports(room, tanggal, bulan, tahun) {
     return;
   }
 
-  // Tampilkan modal
   reportModalOverlay.classList.remove('hidden');
   modalTitle.textContent = `Laporan Tanggal ${tanggal}/${bulan}/${tahun}`;
   modalBody.innerHTML = '';
@@ -325,7 +451,6 @@ async function showDayReports(room, tanggal, bulan, tahun) {
     return;
   }
 
-  // Daftar laporan
   result.reports.forEach((report, index) => {
     const reportDiv = document.createElement('div');
     reportDiv.className = 'report-item';
@@ -334,7 +459,6 @@ async function showDayReports(room, tanggal, bulan, tahun) {
       <pre>${JSON.stringify(report, null, 2)}</pre>
     `;
     
-    // Tombol edit untuk setiap laporan
     const editBtn = document.createElement('button');
     editBtn.textContent = 'Edit Laporan Ini';
     editBtn.className = 'btn-warning';
@@ -349,17 +473,14 @@ async function showDayReports(room, tanggal, bulan, tahun) {
 }
 
 function openEditModal(report) {
-  // Sembunyikan daftar, tampilkan form edit
   modalBody.classList.add('hidden');
   modalActions.classList.add('hidden');
   editFormContainer.classList.remove('hidden');
 
-  // Simpan data yang sedang diedit
   editingReportData = report;
-  editingRoom = currentRoom; // atau room yang sesuai
-  editingReportId = report._row; // baris spreadsheet
+  editingRoom = currentRoom;
+  editingReportId = report._row;
 
-  // Render form edit sesuai field ruangan
   editReportForm.innerHTML = '';
   const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect.value];
   if (!room) return;
@@ -381,7 +502,6 @@ function openEditModal(report) {
         option.textContent = opt;
         input.appendChild(option);
       });
-      // Set nilai saat ini
       input.value = report[field.key] || '';
     } else if (field.type === 'textarea') {
       input = document.createElement('textarea');
@@ -417,7 +537,6 @@ function openEditModal(report) {
     editReportForm.appendChild(input);
   });
 
-  // Gunakan onclick untuk menghindari penumpukan event listener
   saveEditBtn.onclick = saveEditedReport;
   cancelEditBtn.onclick = closeEditModal;
 }
@@ -425,28 +544,23 @@ function openEditModal(report) {
 async function saveEditedReport() {
   if (!editingReportData || !editingRoom) return;
   
-  // Ambil data dari form
   const formData = new FormData(editReportForm);
   const data = {};
   formData.forEach((value, key) => {
     data[key] = value;
   });
 
-  // Panggil API update
   const result = await callApi({ 
     action: 'updateReport', 
     room: editingRoom, 
     row: editingReportId, 
     data: data,
-    checkTanggal: editingReportData.tanggal // untuk validasi konflik
+    checkTanggal: editingReportData.tanggal
   });
 
   if (result.success) {
     alert('Laporan berhasil diperbarui!');
     closeEditModal();
-    // Reload data
-    const tahun = recapYear.value;
-    const bulan = recapMonth.value;
     refreshRecapData();
   } else {
     alert('Gagal memperbarui: ' + result.message);
@@ -474,7 +588,6 @@ async function exportToExcel() {
   const tahun = recapYear.value;
   const bulan = recapMonth.value;
 
-  // Panggil API getFullReport untuk mendapatkan data lengkap
   const result = await callApi({ action: 'getFullReport', room: room, bulan: bulan, tahun: tahun });
 
   if (!result.success || !result.data || result.data.length === 0) {
@@ -482,24 +595,20 @@ async function exportToExcel() {
     return;
   }
 
-  // Buat header CSV (kolom tanggal, shift, dan semua field numerik)
   const headers = ['Tanggal', 'Shift'];
   const numericKeys = Object.keys(result.data[0]).filter(k => k !== 'tanggal' && k !== 'shift');
   numericKeys.forEach(k => headers.push(k));
 
-  // Buat baris data
   const rows = result.data.map(item => {
     const row = [item.tanggal, item.shift];
     numericKeys.forEach(k => row.push(item[k] || 0));
     return row;
   });
 
-  // Gabungkan menjadi CSV
   const csvContent = [headers, ...rows]
     .map(row => row.map(cell => `"${cell}"`).join(','))
     .join('\n');
 
-  // Download file CSV
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -521,7 +630,6 @@ async function printPreview() {
   const tahun = recapYear.value;
   const bulan = recapMonth.value;
 
-  // Panggil API getMonthlyReports untuk mendapatkan data yang lebih detail
   const result = await callApi({ action: 'getMonthlyReports', room: room, bulan: bulan, tahun: tahun });
 
   if (!result.success || !result.reports || result.reports.length === 0) {
@@ -529,21 +637,18 @@ async function printPreview() {
     return;
   }
 
-  // Buat jendela baru untuk preview
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('Popup diblokir. Izinkan popup untuk mencetak.');
     return;
   }
 
-  // Buat HTML tabel
   let html = '<html><head><title>Preview Laporan</title>';
   html += '<style>body{font-family:Arial,sans-serif;padding:20px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px;font-size:12px;}th{background:#f0f0f0;}</style>';
   html += '</head><body>';
   html += `<h2>Laporan ${ROOMS[room]?.label || room} - ${tahun} - ${bulan ? MONTHS_ID[bulan-1] : 'Semua Bulan'}</h2>`;
   html += '<table><thead><tr>';
 
-  // Ambil header dari kunci report pertama (kecuali _row)
   const reportKeys = Object.keys(result.reports[0]).filter(k => k !== '_row' && k !== '_sortDate');
   reportKeys.forEach(key => {
     html += `<th>${key}</th>`;
@@ -636,16 +741,13 @@ tabRecapBtn.addEventListener('click', function () {
   showRecapScreen();
 });
 
-// Tambahkan event listener untuk filter rekap (TANPA reset ulang pilihan)
 if (recapYear) recapYear.addEventListener('change', refreshRecapData);
 if (recapMonth) recapMonth.addEventListener('change', refreshRecapData);
 if (adminRoomSelect) adminRoomSelect.addEventListener('change', refreshRecapData);
 
-// Tambahkan event listener untuk export & print
 if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportToExcel);
 if (printPreviewBtn) printPreviewBtn.addEventListener('click', printPreview);
 
-// Event listener untuk modal
 if (modalCloseBtn) modalCloseBtn.addEventListener('click', function() {
   reportModalOverlay.classList.add('hidden');
   modalBody.classList.remove('hidden');
@@ -669,12 +771,10 @@ function init() {
   adminOpt.textContent = 'ADMIN (Lihat Semua Laporan)';
   roomSelect.appendChild(adminOpt);
 
-  // Load data awal (HANYA SEKALI)
   loadPasswords();
   loadStaff();
-  initFilters(); // Inisialisasi filter tanpa mereset pilihan
+  initFilters();
 
-  // Cek session
   const savedRoom = sessionStorage.getItem('activeRoom');
   if (savedRoom && isValidRoom(savedRoom)) {
     currentRoom = savedRoom;
