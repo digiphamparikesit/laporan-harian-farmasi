@@ -285,6 +285,7 @@ async function loadRecapData(tahun, bulan) {
 
   const result = await callApi({ action: 'getRecap', room: room, bulan: bulan, tahun: tahun });
   if (result.success) {
+    // Render Stat Cards
     statCards.innerHTML = '';
     for (const [key, value] of Object.entries(result.data)) {
       const card = document.createElement('div');
@@ -292,12 +293,12 @@ async function loadRecapData(tahun, bulan) {
       card.innerHTML = `<div class="stat-value">${value}</div><div class="stat-label">${key}</div>`;
       statCards.appendChild(card);
     }
+
+    // GRAFIK NILAI PELAYANAN (BAR CHART) - PER JENIS LAYANAN
+    drawBarChart(Object.keys(result.data), Object.values(result.data));
   }
 
-  // GRAFIK NILAI PELAYANAN (BAR CHART) - Sesuai filter tahun & bulan
-  await loadBarChartData(tahun, bulan);
-
-  // GRAFIK TREN SEMUA UNIT (LINE CHART)
+  // GRAFIK TREN SEMUA UNIT (LINE CHART) - HANYA UNTUK ADMIN
   if (currentRoom === ADMIN_ROOM) {
     const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
     if (trendResult.success) {
@@ -315,54 +316,16 @@ async function loadRecapData(tahun, bulan) {
 }
 
 // =========================================================
-// GRAFIK BATANG (BAR CHART) - "Grafik Nilai Pelayanan"
+// GRAFIK BATANG (BAR CHART) - PER JENIS LAYANAN
 // =========================================================
-async function loadBarChartData(tahun, bulan) {
-  const trendResult = await callApi({ action: 'getYearlyTrend', tahun: tahun });
-  if (trendResult.success) {
-    let labels = [];
-    let values = [];
-    let colors = [];
-    
-    // Tentukan index bulan (1-12) -> (0-11). Jika bulan kosong, tampilkan total tahunan
-    let monthIndex = bulan ? (Number(bulan) - 1) : null;
-
-    if (currentRoom === ADMIN_ROOM) {
-      // Tampilkan semua unit
-      for (const [roomKey, monthlyData] of Object.entries(trendResult.data)) {
-        let val;
-        if (monthIndex !== null) {
-          val = monthlyData[monthIndex] || 0;
-        } else {
-          val = monthlyData.reduce((a,b) => a+b, 0); // total tahunan
-        }
-        labels.push(ROOMS[roomKey]?.label || roomKey);
-        values.push(val);
-        colors.push(ROOM_COLORS[roomKey] || '#000');
-      }
-    } else {
-      // Tampilkan unit aktif saja
-      const roomKey = currentRoom;
-      let val;
-      if (monthIndex !== null) {
-        val = trendResult.data[roomKey]?.[monthIndex] || 0;
-      } else {
-        val = trendResult.data[roomKey]?.reduce((a,b) => a+b, 0) || 0;
-      }
-      labels.push(ROOMS[roomKey]?.label || roomKey);
-      values.push(val);
-      colors.push(ROOM_COLORS[roomKey] || '#000');
-    }
-
-    drawBarChart(labels, values, colors);
-  }
-}
-
-function drawBarChart(labels, values, colors) {
+function drawBarChart(labels, values) {
   if (!barChart) return;
   barChart.innerHTML = '';
   
-  const maxVal = Math.max(...values, 1); // minimal 1 agar tidak error
+  const maxVal = Math.max(...values, 1);
+  
+  // Palet warna untuk setiap jenis layanan
+  const colors = ['#0F6E6A', '#D97706', '#7C3AED', '#DC2626', '#059669', '#2563EB', '#D946EF', '#EA580C', '#0B5350', '#C026D3'];
   
   labels.forEach((label, i) => {
     const row = document.createElement('div');
@@ -377,8 +340,8 @@ function drawBarChart(labels, values, colors) {
     
     const fill = document.createElement('div');
     fill.className = 'bar-fill';
-    fill.style.backgroundColor = colors[i];
-    fill.style.width = '0%'; // animasi
+    fill.style.backgroundColor = colors[i % colors.length]; // warna bergantian
+    fill.style.width = '0%';
     
     const valueDiv = document.createElement('div');
     valueDiv.className = 'bar-value';
@@ -398,7 +361,7 @@ function drawBarChart(labels, values, colors) {
 }
 
 // =========================================================
-// GRAFIK GARIS (LINE CHART) - Tren Tahunan
+// GRAFIK GARIS (LINE CHART) - TREN TAHUNAN
 // =========================================================
 function drawLineChart(datasets, labels) {
   if (!lineChart) return;
