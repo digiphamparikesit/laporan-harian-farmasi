@@ -3,7 +3,7 @@
 // =========================================================
 
 // Ganti dengan URL Apps Script Anda
-const API_URL = 'https://script.google.com/macros/s/AKfycbzx9l0HKXZyV3fzGj3Mfea-0eGUbABi8IhtkN2FTBqxEH8S9Pw0y6U2u9LK9DyTjMD0/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbygy4H-37686KMD_SQhTZv64R9eJDBP-hDxO0sO3ydhNuNMVfutC7TOb1e2ZOp_lNM6/exec';
 
 // ROOM ADMIN
 const ADMIN_ROOM = 'admin';
