@@ -448,7 +448,7 @@ function drawLineChart(datasets, labels) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN
+// MODAL DETAIL & EDIT LAPORAN (DIPERBAIKI)
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
@@ -502,6 +502,27 @@ function openEditModal(report) {
   const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect.value];
   if (!room) return;
 
+  // Helper untuk mencari nilai berdasarkan key config.js, karena header di spreadsheet bisa berbeda
+  function getValueFromReport(fieldKey) {
+    // 1. Coba langsung dengan key
+    if (report[fieldKey] !== undefined) return report[fieldKey];
+    
+    // 2. Coba dengan mengubah key menjadi format header spreadsheet
+    // Contoh: 'JUMLAH_RESEP' -> 'JUMLAH RESEP'
+    var possibleKey = fieldKey.replace(/_/g, ' ');
+    if (report[possibleKey] !== undefined) return report[possibleKey];
+
+    // 3. Coba dengan pencarian fleksibel (mengabaikan spasi, kapital, dan garis bawah)
+    var searchKey = fieldKey.replace(/[_\s]/g, '').toLowerCase();
+    for (var key in report) {
+      var cleanKey = key.replace(/[_\s]/g, '').toLowerCase();
+      if (cleanKey === searchKey) {
+        return report[key];
+      }
+    }
+    return '';
+  }
+
   room.fields.forEach(field => {
     const label = document.createElement('label');
     label.className = 'field-label';
@@ -519,18 +540,19 @@ function openEditModal(report) {
         option.textContent = opt;
         input.appendChild(option);
       });
-      input.value = report[field.key] || '';
+      // Set nilai saat ini menggunakan helper
+      input.value = getValueFromReport(field.key);
     } else if (field.type === 'textarea') {
       input = document.createElement('textarea');
       input.className = 'input';
       input.name = field.key;
-      input.value = report[field.key] || '';
+      input.value = getValueFromReport(field.key);
     } else if (field.type === 'date') {
       input = document.createElement('input');
       input.className = 'input';
       input.type = 'date';
       input.name = field.key;
-      input.value = report[field.key] || '';
+      input.value = getValueFromReport(field.key);
     } else if (field.type === 'staff') {
       input = document.createElement('select');
       input.className = 'input';
@@ -542,13 +564,13 @@ function openEditModal(report) {
         option.textContent = staff.nama;
         input.appendChild(option);
       });
-      input.value = report[field.key] || '';
+      input.value = getValueFromReport(field.key);
     } else {
       input = document.createElement('input');
       input.className = 'input';
       input.type = 'number';
       input.name = field.key;
-      input.value = report[field.key] || '';
+      input.value = getValueFromReport(field.key);
     }
 
     editReportForm.appendChild(input);
@@ -561,23 +583,28 @@ function openEditModal(report) {
 async function saveEditedReport() {
   if (!editingReportData || !editingRoom) return;
   
+  // Ambil data dari form
   const formData = new FormData(editReportForm);
   const data = {};
   formData.forEach((value, key) => {
     data[key] = value;
   });
 
+  // Panggil API update
   const result = await callApi({ 
     action: 'updateReport', 
     room: editingRoom, 
     row: editingReportId, 
     data: data,
-    checkTanggal: editingReportData.tanggal
+    checkTanggal: editingReportData.tanggal // untuk validasi konflik
   });
 
   if (result.success) {
     alert('Laporan berhasil diperbarui!');
     closeEditModal();
+    // Reload data
+    const tahun = recapYear.value;
+    const bulan = recapMonth.value;
     refreshRecapData();
   } else {
     alert('Gagal memperbarui: ' + result.message);
