@@ -385,11 +385,18 @@ function drawLineChart(datasets, labels) {
 }
 
 // =========================================================
-// MODAL DETAIL & EDIT LAPORAN (DIPERBAIKI DENGAN TRY-CATCH)
+// MODAL DETAIL & EDIT LAPORAN (DENGAN GUARD NULL)
 // =========================================================
 async function showDayReports(room, tanggal, bulan, tahun) {
   const result = await callApi({ action: 'getDayReports', room: room, tanggal: tanggal, bulan: bulan, tahun: tahun });
   if (!result.success) { alert('Gagal memuat data: ' + result.message); return; }
+
+  // GUARD: pastikan elemen modal ada
+  if (!reportModalOverlay || !modalTitle || !modalBody || !modalActions || !editFormContainer) {
+    console.error('❌ Elemen modal tidak ditemukan! Periksa ID di HTML.');
+    alert('Terjadi kesalahan pada tampilan modal. Muat ulang halaman.');
+    return;
+  }
 
   reportModalOverlay.classList.remove('hidden');
   modalTitle.textContent = `Laporan Tanggal ${tanggal}/${bulan}/${tahun}`;
@@ -403,11 +410,8 @@ async function showDayReports(room, tanggal, bulan, tahun) {
     try {
       const reportDiv = document.createElement('div');
       reportDiv.className = 'report-item';
-      
-      // Tampilkan dengan aman
       const shiftValue = report.shift || report['JADWAL SHIFT'] || report['JADWAL_SHIFT'] || '-';
       reportDiv.innerHTML = `<div><strong>Shift: ${shiftValue}</strong></div><pre>${JSON.stringify(report, null, 2)}</pre>`;
-      
       const editBtn = document.createElement('button');
       editBtn.textContent = 'Edit Laporan Ini';
       editBtn.className = 'btn-warning';
@@ -415,13 +419,11 @@ async function showDayReports(room, tanggal, bulan, tahun) {
       editBtn.onclick = function() { openEditModal(report); };
       reportDiv.appendChild(editBtn);
       modalBody.appendChild(reportDiv);
-    } catch (err) {
-      console.error('Error rendering report item:', err);
-    }
+    } catch (err) { console.error('Error rendering report:', err); }
   });
 }
 
-// Helper untuk konversi tanggal
+// Helper konversi tanggal
 function convertDateForInput(dateStr) {
   if (!dateStr) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
@@ -431,6 +433,12 @@ function convertDateForInput(dateStr) {
 }
 
 function openEditModal(report) {
+  // GUARD: pastikan elemen modal ada
+  if (!reportModalOverlay || !modalBody || !editFormContainer || !editReportForm || !saveEditBtn || !cancelEditBtn) {
+    alert('Elemen modal tidak ditemukan. Muat ulang halaman.');
+    return;
+  }
+
   modalBody.classList.add('hidden');
   modalActions.classList.add('hidden');
   editFormContainer.classList.remove('hidden');
@@ -443,17 +451,31 @@ function openEditModal(report) {
   const room = ROOMS[editingRoom] || ROOMS[adminRoomSelect.value];
   if (!room) { alert('Konfigurasi ruangan tidak ditemukan!'); return; }
 
-  // Pencarian data yang lebih fleksibel
+  // Fungsi pencarian nilai paling fleksibel
   function getValueFromReport(fieldKey) {
+    if (!report) return '';
     if (report[fieldKey] !== undefined && report[fieldKey] !== null) return report[fieldKey];
     var possibleKey = fieldKey.replace(/_/g, ' ');
     if (report[possibleKey] !== undefined && report[possibleKey] !== null) return report[possibleKey];
-
-    var searchKey = fieldKey.replace(/[_\s()\/]/g, '').toLowerCase();
+    var upperKey = fieldKey.toUpperCase();
+    if (report[upperKey] !== undefined && report[upperKey] !== null) return report[upperKey];
+    
+    var searchKey = fieldKey.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     for (var key in report) {
-      var cleanKey = key.replace(/[_\s()\/]/g, '').toLowerCase();
-      if (cleanKey === searchKey || cleanKey.includes(searchKey)) {
-        return report[key];
+      var cleanKey = key.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      if (cleanKey === searchKey || cleanKey.includes(searchKey)) return report[key];
+    }
+    
+    // Pencarian per kata
+    var parts = searchKey.split('_');
+    if (parts.length > 1) {
+      for (var key2 in report) {
+        var cleanKey2 = key2.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        var allFound = true;
+        for (var i = 0; i < parts.length; i++) {
+          if (!cleanKey2.includes(parts[i])) { allFound = false; break; }
+        }
+        if (allFound) return report[key2];
       }
     }
     return '';
@@ -466,7 +488,6 @@ function openEditModal(report) {
     editReportForm.appendChild(label);
 
     let input;
-    // Ambil nilai mentah
     let rawValue = getValueFromReport(field.key);
     if (field.type === 'date') rawValue = convertDateForInput(rawValue);
 
@@ -480,10 +501,7 @@ function openEditModal(report) {
         option.textContent = opt;
         input.appendChild(option);
       });
-      // Set nilai jika ada di opsi
-      if (rawValue && field.options.includes(rawValue)) {
-        input.value = rawValue;
-      }
+      if (rawValue && field.options.includes(rawValue)) input.value = rawValue;
     } else if (field.type === 'textarea') {
       input = document.createElement('textarea');
       input.className = 'input';
@@ -512,10 +530,7 @@ function openEditModal(report) {
         option.textContent = staff.nama;
         input.appendChild(option);
       });
-      // Set nilai jika staff ada di daftar
-      if (rawValue) {
-        input.value = rawValue;
-      }
+      if (rawValue) input.value = rawValue;
     } else {
       input = document.createElement('input');
       input.className = 'input';
@@ -536,13 +551,10 @@ async function saveEditedReport() {
   const formData = new FormData(editReportForm);
   const data = {};
   formData.forEach((value, key) => { data[key] = value; });
-
-  // Konversi kembali tanggal ke dd/mm/yyyy jika diperlukan
   if (data.tanggal) {
     const parts = data.tanggal.split('-');
     if (parts.length === 3) data.tanggal = `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
-
   const result = await callApi({ action: 'updateReport', room: editingRoom, row: editingReportId, data: data, checkTanggal: editingReportData.tanggal });
   if (result.success) {
     alert('Laporan berhasil diperbarui!');
@@ -554,9 +566,9 @@ async function saveEditedReport() {
 }
 
 function closeEditModal() {
-  reportModalOverlay.classList.add('hidden');
-  modalBody.classList.remove('hidden');
-  editFormContainer.classList.add('hidden');
+  if (reportModalOverlay) reportModalOverlay.classList.add('hidden');
+  if (modalBody) modalBody.classList.remove('hidden');
+  if (editFormContainer) editFormContainer.classList.add('hidden');
   editingReportId = null;
   editingReportData = null;
 }
@@ -567,8 +579,7 @@ function closeEditModal() {
 async function exportToExcel() {
   const room = (currentRoom === ADMIN_ROOM && adminRoomSelect.value) ? adminRoomSelect.value : currentRoom;
   if (!room) { alert('Pilih ruangan terlebih dahulu!'); return; }
-  const tahun = recapYear.value;
-  const bulan = recapMonth.value;
+  const tahun = recapYear.value; const bulan = recapMonth.value;
   const result = await callApi({ action: 'getFullReport', room: room, bulan: bulan, tahun: tahun });
   if (!result.success || !result.data || result.data.length === 0) { alert('Tidak ada data untuk diekspor.'); return; }
   const headers = ['Tanggal', 'Shift'];
@@ -617,23 +628,21 @@ async function printPreview() {
 function handleLogout() {
   currentRoom = null;
   sessionStorage.removeItem('activeRoom');
-  loginScreen.classList.remove('hidden');
-  formScreen.classList.add('hidden');
-  recapScreen.classList.add('hidden');
-  logoutBtn.classList.add('hidden');
-  activeRoomBadge.classList.add('hidden');
+  if (loginScreen) loginScreen.classList.remove('hidden');
+  if (formScreen) formScreen.classList.add('hidden');
+  if (recapScreen) recapScreen.classList.add('hidden');
+  if (logoutBtn) logoutBtn.classList.add('hidden');
+  if (activeRoomBadge) activeRoomBadge.classList.add('hidden');
   if (tabNav) tabNav.classList.add('hidden');
-  passwordInput.value = '';
+  if (passwordInput) passwordInput.value = '';
 }
 
 loginBtn.addEventListener('click', async function () {
   const room = roomSelect.value;
   const password = passwordInput.value.trim();
-  loginError.classList.add('hidden');
-
-  if (!password) { loginError.textContent = 'Password wajib diisi.'; loginError.classList.remove('hidden'); return; }
-  if (room !== ADMIN_ROOM && !ROOMS[room]) { loginError.textContent = 'Ruangan tidak ditemukan.'; loginError.classList.remove('hidden'); return; }
-
+  if (loginError) loginError.classList.add('hidden');
+  if (!password) { if (loginError) { loginError.textContent = 'Password wajib diisi.'; loginError.classList.remove('hidden'); } return; }
+  if (room !== ADMIN_ROOM && !ROOMS[room]) { if (loginError) { loginError.textContent = 'Ruangan tidak ditemukan.'; loginError.classList.remove('hidden'); } return; }
   if (Object.keys(roomPasswords).length === 0) await loadPasswords();
   const correctPassword = roomPasswords[room];
   if (correctPassword && password === correctPassword) {
@@ -643,7 +652,7 @@ loginBtn.addEventListener('click', async function () {
     if (result.success) {
       currentRoom = room; sessionStorage.setItem('activeRoom', room); showFormScreen();
     } else {
-      loginError.textContent = result.message || 'Password salah.'; loginError.classList.remove('hidden');
+      if (loginError) { loginError.textContent = result.message || 'Password salah.'; loginError.classList.remove('hidden'); }
     }
   }
 });
@@ -652,13 +661,15 @@ logoutBtn.addEventListener('click', handleLogout);
 
 tabInputBtn.addEventListener('click', function () {
   if (currentRoom && currentRoom !== ADMIN_ROOM) {
-    formScreen.classList.remove('hidden'); recapScreen.classList.add('hidden');
+    if (formScreen) formScreen.classList.remove('hidden');
+    if (recapScreen) recapScreen.classList.add('hidden');
     tabInputBtn.classList.add('active'); tabRecapBtn.classList.remove('active');
   }
 });
 
 tabRecapBtn.addEventListener('click', function () {
-  recapScreen.classList.remove('hidden'); formScreen.classList.add('hidden');
+  if (recapScreen) recapScreen.classList.remove('hidden');
+  if (formScreen) formScreen.classList.add('hidden');
   tabRecapBtn.classList.add('active'); tabInputBtn.classList.remove('active');
   showRecapScreen();
 });
@@ -666,18 +677,19 @@ tabRecapBtn.addEventListener('click', function () {
 if (recapYear) recapYear.addEventListener('change', refreshRecapData);
 if (recapMonth) recapMonth.addEventListener('change', refreshRecapData);
 if (adminRoomSelect) adminRoomSelect.addEventListener('change', refreshRecapData);
-
 if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportToExcel);
 if (printPreviewBtn) printPreviewBtn.addEventListener('click', printPreview);
-
 if (modalCloseBtn) modalCloseBtn.addEventListener('click', function() {
-  reportModalOverlay.classList.add('hidden'); modalBody.classList.remove('hidden'); editFormContainer.classList.add('hidden');
+  if (reportModalOverlay) reportModalOverlay.classList.add('hidden');
+  if (modalBody) modalBody.classList.remove('hidden');
+  if (editFormContainer) editFormContainer.classList.add('hidden');
 });
 
 // =========================================================
 // INIT
 // =========================================================
 function init() {
+  if (!roomSelect) { console.error('❌ Elemen #roomSelect tidak ditemukan!'); return; }
   roomSelect.innerHTML = '';
   Object.keys(ROOMS).forEach(roomKey => {
     const opt = document.createElement('option');
@@ -685,9 +697,7 @@ function init() {
   });
   const adminOpt = document.createElement('option');
   adminOpt.value = ADMIN_ROOM; adminOpt.textContent = 'ADMIN (Lihat Semua Laporan)'; roomSelect.appendChild(adminOpt);
-
   loadPasswords(); loadStaff(); initFilters();
-
   const savedRoom = sessionStorage.getItem('activeRoom');
   if (savedRoom && isValidRoom(savedRoom)) { currentRoom = savedRoom; showFormScreen(); }
 }
