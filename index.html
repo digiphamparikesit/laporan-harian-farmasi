@@ -44,14 +44,6 @@
       <h1 class="card-title" id="formTitle">Input Laporan</h1>
       <p class="card-subtitle">Isi data pelayanan untuk shift ini, lalu simpan.</p>
 
-      <!-- Banner ini muncul hanya saat mengedit laporan yang sudah ada
-           (dipicu dari tombol Edit di pop-up detail laporan pada tab
-           Rekap Laporan > kalender kelengkapan). -->
-      <div id="editBanner" class="edit-banner hidden">
-        <span>✏️ Mengedit laporan tanggal <b id="editBannerDate"></b> — perbaiki data lalu simpan.</span>
-        <button id="cancelEditBtn" class="btn-cancel-edit">Batal Edit</button>
-      </div>
-
       <form id="reportForm"></form>
 
       <button id="submitBtn" class="btn-primary">Simpan Laporan</button>
@@ -83,6 +75,16 @@
             </div>
           </div>
 
+          <!-- ===== TOMBOL EXPORT & PRINT ===== -->
+          <div class="recap-actions">
+            <button id="exportExcelBtn" class="btn-secondary">
+              <span class="icon">📊</span> Export Excel
+            </button>
+            <button id="printPreviewBtn" class="btn-secondary">
+              <span class="icon">🖨️</span> Cetak Preview
+            </button>
+          </div>
+
           <div id="statCards" class="stat-cards"></div>
         </div>
 
@@ -95,19 +97,8 @@
 
       <div class="card recap-daily-card">
         <h2 class="chart-title">Kelengkapan Laporan per Tanggal - <span id="dailyRoomLabel"></span></h2>
-        <p class="card-subtitle">Tanggal <span class="daily-legend-dot day-missing"></span> berarti belum ada laporan masuk sampai hari ini. Pilih Bulan tertentu (bukan "Semua Bulan") di filter atas untuk melihat ini. Klik tanggal yang sudah ada laporannya untuk lihat detail &amp; mengedit.</p>
+        <p class="card-subtitle">Tanggal <span class="daily-legend-dot day-missing"></span> berarti belum ada laporan masuk sampai hari ini. Pilih Bulan tertentu (bukan "Semua Bulan") di filter atas untuk melihat ini.</p>
         <div id="dailyCalendar" class="daily-calendar"></div>
-      </div>
-
-      <!-- ===== Rekap Data Pelayanan: Export Excel & Preview Cetak ===== -->
-      <div class="card recap-export-card">
-        <div class="export-card-header">
-          <div>
-            <h2 class="chart-title">Laporan Rekap Data Pelayanan</h2>
-            <p class="card-subtitle">Detail tiap laporan per tanggal &amp; shift, lengkap semua kolom, dengan baris Total di akhir. Pilih Bulan tertentu di filter atas (bukan "Semua Bulan").</p>
-          </div>
-          <button id="exportOpenBtn" class="btn-icon-print" title="Preview Cetak / Export Excel">🖨️</button>
-        </div>
       </div>
 
       <div id="adminTrendPanel" class="card recap-trend-panel hidden">
@@ -125,6 +116,7 @@
     <span>Memproses...</span>
   </div>
 
+  <!-- ===== MODAL DETAIL LAPORAN ===== -->
   <div id="reportModalOverlay" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -132,27 +124,25 @@
         <button id="modalCloseBtn" class="modal-close" aria-label="Tutup">&times;</button>
       </div>
       <div id="modalBody" class="modal-body"></div>
-    </div>
-  </div>
-
-  <!-- ===== Modal Rekap Excel / Preview Cetak ===== -->
-  <div id="exportModalOverlay" class="modal-overlay hidden">
-    <div class="modal-card export-modal-card">
-      <div class="modal-header">
-        <h2 id="exportModalTitle">Laporan Rekap</h2>
-        <div class="export-modal-actions">
-          <button id="exportExcelBtn" class="btn-ghost-light">📊 Export Excel</button>
-          <button id="exportPrintBtn" class="btn-ghost-light">🖨️ Cetak</button>
-          <button id="exportCloseBtn" class="modal-close" aria-label="Tutup">&times;</button>
+      
+      <!-- Tombol Aksi di Modal -->
+      <div id="modalActions" class="modal-actions hidden">
+        <button id="editReportBtn" class="btn-warning">✏️ Edit Laporan</button>
+        <button id="deleteReportBtn" class="btn-danger">🗑️ Hapus Laporan</button>
+      </div>
+      
+      <!-- Form Edit Laporan -->
+      <div id="editFormContainer" class="hidden">
+        <h3 style="margin: 0 0 12px 0; font-size: 15px;">Edit Laporan</h3>
+        <form id="editReportForm"></form>
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button id="saveEditBtn" class="btn-primary" style="flex:1; margin:0;">Simpan Perubahan</button>
+          <button id="cancelEditBtn" class="btn-secondary" style="flex:1; margin:0; text-align:center;">Batal</button>
         </div>
       </div>
-      <div id="exportModalBody" class="modal-body export-modal-body">
-        <div id="exportTableWrap"></div>
-      </div>
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
 </body>
