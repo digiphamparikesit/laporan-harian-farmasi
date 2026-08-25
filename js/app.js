@@ -207,6 +207,58 @@ function showFormScreen() {
 }
 
 // =========================================================
+// FUNGSI SUBMIT LAPORAN (BARU DITAMBAHKAN)
+// =========================================================
+async function submitReport() {
+  if (!currentRoom || currentRoom === ADMIN_ROOM) {
+    alert('Ruangan tidak valid untuk input.');
+    return;
+  }
+
+  const room = ROOMS[currentRoom];
+  if (!room) return;
+
+  // Ambil data dari form
+  const formData = new FormData(reportForm);
+  const data = {};
+  formData.forEach((value, key) => {
+    data[key] = value;
+  });
+
+  // Validasi tanggal wajib diisi
+  const tanggalField = room.fields.find(f => f.type === 'date');
+  if (tanggalField && !data[tanggalField.key]) {
+    alert('Tanggal laporan wajib diisi.');
+    return;
+  }
+
+  // Validasi minimal field petugas / select jika ada
+  const selectFields = room.fields.filter(f => f.type === 'select');
+  for (const field of selectFields) {
+    if (field.options && field.options.length > 0 && !data[field.key]) {
+      alert(field.label + ' wajib dipilih.');
+      return;
+    }
+  }
+
+  // Kirim ke backend
+  const result = await callApi({ action: 'submitReport', room: currentRoom, data: data });
+
+  if (result.success) {
+    alert('Laporan berhasil disimpan!');
+    // Reset form setelah sukses
+    reportForm.reset();
+    if (submitMessage) {
+      submitMessage.textContent = 'Laporan berhasil disimpan.';
+      submitMessage.classList.remove('hidden');
+      setTimeout(() => submitMessage.classList.add('hidden'), 3000);
+    }
+  } else {
+    alert('Gagal menyimpan laporan: ' + result.message);
+  }
+}
+
+// =========================================================
 // FILTER & RECAP LOGIC
 // =========================================================
 function initFilters() {
@@ -554,7 +606,6 @@ function openEditModal(report) {
     editReportForm.appendChild(input);
   });
 
-  // Event listener untuk tombol simpan dan batal (di-assign ulang setiap kali modal dibuka)
   saveEditBtn.onclick = saveEditedReport;
   cancelEditBtn.onclick = closeEditModal;
 }
@@ -654,6 +705,14 @@ function handleLogout() {
 }
 
 function attachEvents() {
+  // ===== EVENT TOMBOL SIMPAN LAPORAN (DIPERBAIKI) =====
+  if (submitBtn) {
+    submitBtn.addEventListener('click', async function (e) {
+      e.preventDefault(); // Mencegah reload halaman
+      await submitReport();
+    });
+  }
+
   if (loginBtn) {
     loginBtn.addEventListener('click', async function () {
       const room = roomSelect ? roomSelect.value : '';
