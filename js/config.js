@@ -191,16 +191,17 @@ const ROOMS = {
     ]
   },
   
-  // DEPO FARMASI ONKOLOGI TERPADU
+    // DEPO FARMASI ONKOLOGI TERPADU
   depo_onkologi_terpadu: {
     label: 'DEPO FARMASI ONKOLOGI TERPADU',
-    staffColumns: 3,
+    staffColumns: 4, // Ubah dari 3 menjadi 4
     fields: [
       { key: 'TANGGAL_INPUT_LAPORAN', label: 'Tanggal Laporan', type: 'date' },
       { key: 'JADWAL_SHIFT', label: 'Jadwal Shift', type: 'select', options: ['Pagi', 'Siang'] },
       { key: 'PETUGAS_1', label: 'Petugas 1', type: 'staff' },
       { key: 'PETUGAS_2', label: 'Petugas 2', type: 'staff' },
       { key: 'PETUGAS_3', label: 'Petugas 3', type: 'staff' },
+      { key: 'PETUGAS_4', label: 'Petugas 4', type: 'staff' }, // <-- TAMBAHAN BARU
       { key: 'JUMLAH_PASIEN_KEMOTERAPI', label: 'Jumlah Pasien Kemoterapi', type: 'number' },
       { key: 'JUMLAH_SEDIAAN_IV_ADMIXTURE_SITOSTATIKA', label: 'Jumlah Sediaan IV Admixture Sitostatika', type: 'number' },
       { key: 'JUMLAH_SEDIAAN_IV_ADMIXTURE_TPN', label: 'Jumlah Sediaan IV Admixture TPN', type: 'number' },
@@ -212,7 +213,6 @@ const ROOMS = {
       { key: 'JUMLAH_PASIEN_RUANGAN_INTERMEDIATE_UPSS', label: 'Jumlah Pasien Ruangan Intermediate (UPSS)', type: 'number' }
     ]
   }
-};
 
 // =========================================================
 // FUNGSI VALIDASI
