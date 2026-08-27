@@ -191,7 +191,7 @@ const ROOMS = {
     ]
   },
   
-    // DEPO FARMASI ONKOLOGI TERPADU
+  // DEPO FARMASI ONKOLOGI TERPADU
   depo_onkologi_terpadu: {
     label: 'DEPO FARMASI ONKOLOGI TERPADU',
     staffColumns: 4, // Ubah dari 3 menjadi 4
@@ -211,10 +211,9 @@ const ROOMS = {
       { key: 'JUMLAH_PASIEN_RUANGAN_ENGGANG_2_ANAK', label: 'Jumlah Pasien Ruangan Enggang 2 Anak', type: 'number' },
       { key: 'JUMLAH_PASIEN_RUANGAN_VIP_PUNAI_1', label: 'Jumlah Pasien Ruangan VIP Punai 1', type: 'number' },
       { key: 'JUMLAH_PASIEN_RUANGAN_INTERMEDIATE_UPSS', label: 'Jumlah Pasien Ruangan Intermediate (UPSS)', type: 'number' }
-      ]
-    )
-  },
-  
+    ]
+  }
+};
 
 // =========================================================
 // FUNGSI VALIDASI
